@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "سیخوڕ - یاری کوردی",
+    "slug": "spy-kurdish-game",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/spy-icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/spy-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f0c29"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.spykurdish.game"
+    },
+    "android": {
+      "package": "com.spykurdish.game",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/spy-icon.png",
+        "backgroundColor": "#0f0c29"
+      },
+      "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "pan"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "Spy Kurdish Game - سیخوڕ",
+      "shortName": "سیخوڕ",
+      "lang": "ku",
+      "description": "یاری سیخوڕ بە زمانی کوردی - A Kurdish Spy party game",
+      "backgroundColor": "#0f0c29",
+      "themeColor": "#667eea"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "spy-kurdish-game"
+      }
+    },
+    "owner": "rekan-maqsoud"
+  }
+}

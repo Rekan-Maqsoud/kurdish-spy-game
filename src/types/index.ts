@@ -1,0 +1,124 @@
+// Game types and interfaces
+
+export type CategoryId = 
+  | 'places'
+  | 'food'
+  | 'animals'
+  | 'transport'
+  | 'sports'
+  | 'professions'
+  | 'objects'
+  | 'nature'
+  | 'clothes'
+  | 'bodyParts'
+  | 'electronics'
+  | 'buildings'
+  | 'tools'
+  | 'furniture'
+  | 'instruments'
+  | 'countries'
+  | 'movies'
+  | 'colors'
+  | 'weather'
+  | 'drinks';
+
+export interface Category {
+  id: CategoryId;
+  name: string; // Kurdish name
+  icon: string; // Emoji icon
+  color: string;
+  words: string[];
+}
+
+export interface Player {
+  id: string;
+  name: string;
+  score: number;
+  isSpy: boolean;
+  hasVoted: boolean;
+  votedFor: string | null;
+  hasSeenWord: boolean;
+}
+
+export interface GameSettings {
+  numberOfRounds: number;
+  timePerRound: number; // in seconds, 0 for unlimited
+  selectedCategories: CategoryId[];
+  spyGuessOptions: number; // number of word options for spy
+  pointsForFindingSpy: number;
+  pointsForSpyGuessing: number;
+}
+
+export interface GameState {
+  currentRound: number;
+  totalRounds: number;
+  currentWord: string;
+  currentCategory: CategoryId;
+  players: Player[];
+  spyId: string;
+  phase: GamePhase;
+  usedWords: string[];
+  roundStartTime: number | null;
+  spyGuessOptions: string[];
+}
+
+export type GamePhase = 
+  | 'setup'          // Setting up players
+  | 'distribution'   // Showing words to players
+  | 'discussion'     // Players discussing/asking questions
+  | 'voting'         // Players voting for spy
+  | 'spyGuess'       // Spy guessing the word
+  | 'roundResult'    // Showing round results
+  | 'gameEnd';       // Final results
+
+export interface RoundResult {
+  round: number;
+  word: string;
+  category: CategoryId;
+  spyId: string;
+  spyName: string;
+  spyWasFound: boolean;
+  spyGuessedCorrectly: boolean;
+  votes: { playerId: string; votedForId: string }[];
+  pointsAwarded: { playerId: string; points: number }[];
+}
+
+export interface SavedGame {
+  id: string;
+  date: string;
+  players: { name: string; score: number }[];
+  rounds: number;
+  winner: string;
+}
+
+export interface HighScore {
+  playerName: string;
+  score: number;
+  date: string;
+  rounds: number;
+}
+
+// Player statistics for leaderboard
+export interface PlayerStats {
+  name: string;
+  totalPoints: number;
+  gamesPlayed: number;
+  gamesWon: number;
+  lastPlayed: string;
+}
+
+// Navigation types
+export type RootStackParamList = {
+  Home: undefined;
+  HowToPlay: undefined;
+  Settings: undefined;
+  PlayerSetup: undefined;
+  WordDistribution: { playerIndex: number };
+  Discussion: undefined;
+  Voting: undefined;
+  SpyGuess: undefined;
+  RoundResult: { result: RoundResult };
+  GameEnd: undefined;
+  CategorySelect: undefined;
+  HighScores: undefined;
+};
