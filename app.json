@@ -37,6 +37,9 @@
       "backgroundColor": "#0f0c29",
       "themeColor": "#667eea"
     },
+    "experiments": {
+      "baseUrl": "/kurdish-spy-game"
+    },
     "extra": {
       "eas": {
         "projectId": "spy-kurdish-game"
