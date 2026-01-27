@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   SAVED_GAMES: '@spy_game_saved',
   PLAYER_STATS: '@spy_game_player_stats',
   PLAYER_NAMES: '@spy_game_player_names',
+  RECENT_WORDS: '@spy_game_recent_words',
 };
 
 // Default settings
@@ -15,6 +16,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   timePerRound: 0, // 0 = unlimited
   selectedCategories: ['places', 'food', 'animals', 'objects'] as CategoryId[],
   spyGuessOptions: 4,
+  numberOfSpies: 1,
   pointsForFindingSpy: 1,
   pointsForSpyGuessing: 2,
   pointsForSpyEscape: 1, // points spy gets for not being found
@@ -96,6 +98,26 @@ export const loadSavedGames = async (): Promise<SavedGame[]> => {
     return [];
   } catch (error) {
     console.error('Error loading saved games:', error);
+    return [];
+  }
+};
+
+// Recent words
+export const saveRecentWords = async (words: string[]): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.RECENT_WORDS, JSON.stringify(words));
+  } catch (error) {
+    console.error('Error saving recent words:', error);
+  }
+};
+
+export const loadRecentWords = async (): Promise<string[]> => {
+  try {
+    const words = await AsyncStorage.getItem(STORAGE_KEYS.RECENT_WORDS);
+    if (words) return JSON.parse(words);
+    return [];
+  } catch (error) {
+    console.error('Error loading recent words:', error);
     return [];
   }
 };

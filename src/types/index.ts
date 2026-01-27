@@ -45,6 +45,7 @@ export interface GameSettings {
   timePerRound: number; // in seconds, 0 for unlimited
   selectedCategories: CategoryId[];
   spyGuessOptions: number; // number of word options for spy
+  numberOfSpies: number;
   pointsForFindingSpy: number;
   pointsForSpyGuessing: number;
   pointsForSpyEscape: number; // points spy gets for not being found
@@ -56,7 +57,7 @@ export interface GameState {
   currentWord: string;
   currentCategory: CategoryId;
   players: Player[];
-  spyId: string;
+  spyIds: string[];
   phase: GamePhase;
   usedWords: string[];
   roundStartTime: number | null;
@@ -76,8 +77,9 @@ export interface RoundResult {
   round: number;
   word: string;
   category: CategoryId;
-  spyId: string;
-  spyName: string;
+  spyIds: string[];
+  spyNames: string[];
+  caughtSpyIds: string[];
   spyWasFound: boolean;
   spyEscaped: boolean; // true if spy wasn't caught by majority
   spyGuessedCorrectly: boolean;

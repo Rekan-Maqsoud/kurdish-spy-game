@@ -23,13 +23,6 @@ const VotingScreen: React.FC = () => {
   const [selectedGuessWord, setSelectedGuessWord] = useState<string | null>(null);
   const [spyGuessedCorrectly, setSpyGuessedCorrectly] = useState(false);
 
-  console.log('[VotingScreen] Rendered - phase:', phase, 'gameState:', gameState ? {
-    currentRound: gameState.currentRound,
-    totalRounds: gameState.totalRounds,
-    spyId: gameState.spyId,
-    playersVoted: gameState.players.filter(p => p.hasVoted).length
-  } : null);
-
   const currentVoter = gameState?.players[currentVoterIndex];
   const hasEveryoneVoted = gameState?.players.every(p => p.hasVoted) ?? false;
 
@@ -65,10 +58,6 @@ const VotingScreen: React.FC = () => {
       setCurrentVoterIndex(currentVoterIndex + 1);
       setSelectedSuspect(null);
     }
-  };
-
-  const getVoteCount = (playerId: string): number => {
-    return gameState.players.filter(p => p.votedFor === playerId).length;
   };
 
   const handleSpyGuess = () => {
@@ -112,13 +101,29 @@ const VotingScreen: React.FC = () => {
     }
   };
 
-  const spy = gameState.players.find(p => p.id === gameState.spyId);
-  const spyVotes = spy ? getVoteCount(spy.id) : 0;
-  const spyFound = spyVotes > gameState.players.length / 2;
+  const spyIds = gameState.spyIds;
+  const spies = gameState.players.filter(p => spyIds.includes(p.id));
+  const spyNames = spies.map(s => s.name).join('، ');
+
+  const nonSpyIds = gameState.players
+    .filter(p => !spyIds.includes(p.id))
+    .map(p => p.id);
+
+  const voteCounts = new Map<string, number>();
+  gameState.players.forEach(p => {
+    if (!nonSpyIds.includes(p.id)) return;
+    if (!p.votedFor) return;
+    voteCounts.set(p.votedFor, (voteCounts.get(p.votedFor) || 0) + 1);
+  });
+  const maxVotes = voteCounts.size > 0 ? Math.max(...voteCounts.values()) : 0;
+  const topVotedIds = Array.from(voteCounts.entries())
+    .filter(([, count]) => count === maxVotes)
+    .map(([id]) => id);
+  const spyFound = maxVotes > nonSpyIds.length / 2 && topVotedIds.some(id => spyIds.includes(id));
 
   // Spy Guess Phase
   if (phase === 'spyGuess') {
-    if (!spy) return null;
+    if (spies.length === 0) return null;
 
     return (
       <GradientBackground variant="spy">
@@ -138,7 +143,7 @@ const VotingScreen: React.FC = () => {
               style={styles.spyGuessIcon} 
               resizeMode="contain" 
             />
-            <Text style={styles.spyGuessTitle}>{spy.name}</Text>
+            <Text style={styles.spyGuessTitle}>{spyNames}</Text>
             <Text style={styles.spyGuessSubtitle}>
               {spyFound 
                 ? 'دۆزراویتەوە! ئەگەر وشەکە بزانیت، دەتوانیت خاڵ بەدەستبێنیت'
@@ -192,7 +197,7 @@ const VotingScreen: React.FC = () => {
 
   // Results Phase
   if (phase === 'results') {
-    if (!spy) {
+    if (spies.length === 0) {
       console.log('[VotingScreen] Spy not found in results!');
       return null;
     }
@@ -233,7 +238,7 @@ const VotingScreen: React.FC = () => {
               />
               <View style={styles.spyInfo}>
                 <Text style={styles.spyLabel}>سیخوڕ بوو:</Text>
-                <Text style={styles.spyNameText}>{spy.name}</Text>
+                <Text style={styles.spyNameText}>{spyNames}</Text>
               </View>
             </View>
             
@@ -241,12 +246,12 @@ const VotingScreen: React.FC = () => {
             <View style={styles.badgesRow}>
               <View style={[
                 styles.resultBadge,
-                spyFound ? styles.badgeSuccess : styles.badgeDanger
+                spyFound ? styles.badgeDanger : styles.badgeSuccess
               ]}>
                 {spyFound ? (
-                  <Ionicons name="checkmark-circle" size={18} color="#fff" />
-                ) : (
                   <Ionicons name="close-circle" size={18} color="#fff" />
+                ) : (
+                  <Ionicons name="checkmark-circle" size={18} color="#fff" />
                 )}
                 <Text style={styles.resultBadgeText}>
                   {spyFound ? 'دۆزرایەوە' : 'دەرباز بوو'}
@@ -282,7 +287,7 @@ const VotingScreen: React.FC = () => {
                     <View style={styles.playerInfo}>
                       <View style={styles.playerNameRow}>
                         <Text style={styles.playerName}>{player.name}</Text>
-                        {player.id === gameState.spyId && (
+                        {gameState.spyIds.includes(player.id) && (
                           <Image 
                             source={require('../../assets/spy-icon.png')} 
                             style={styles.miniSpyIcon} 

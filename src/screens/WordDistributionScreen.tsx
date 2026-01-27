@@ -23,13 +23,6 @@ const WordDistributionScreen: React.FC = () => {
   const { gameState, markPlayerAsSeenWord } = useGame();
   const [showWord, setShowWord] = useState(false);
 
-  console.log('[WordDistribution] Rendered - playerIndex:', playerIndex, 'gameState:', gameState ? {
-    currentRound: gameState.currentRound,
-    currentWord: gameState.currentWord,
-    spyId: gameState.spyId,
-    phase: gameState.phase
-  } : null);
-
   useEffect(() => {
     if (!gameState) {
       console.log('[WordDistribution] No gameState, navigating home');
@@ -42,7 +35,7 @@ const WordDistributionScreen: React.FC = () => {
   }
 
   const currentPlayer = gameState.players[playerIndex];
-  const isSpy = currentPlayer.id === gameState.spyId;
+  const isSpy = gameState.spyIds.includes(currentPlayer.id);
   const category = getCategoryById(gameState.currentCategory);
 
   const handleShowWord = () => {

@@ -9,7 +9,7 @@ import Colors from '../constants/colors';
 import Typography from '../constants/typography';
 import { useGame } from '../context/GameContext';
 import { getCategoryById } from '../data/words';
-import { updatePlayerRoundStats, RoundStatsUpdate } from '../utils/storage';
+// Round stats are saved in GameContext when round ends
 
 type RoundResultNavigationProp = NativeStackNavigationProp<RootStackParamList, 'RoundResult'>;
 type RoundResultRouteProp = RouteProp<RootStackParamList, 'RoundResult'>;
@@ -21,7 +21,6 @@ const RoundResultScreen: React.FC = () => {
   
   const { gameState, proceedToNextPhase, startNewRound } = useGame();
   const [shouldNavigateHome, setShouldNavigateHome] = useState(false);
-  const [statsSaved, setStatsSaved] = useState(false);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -111,35 +110,6 @@ const RoundResultScreen: React.FC = () => {
       navigation.navigate('Home');
     }
   }, [gameState, shouldNavigateHome, navigation]);
-
-  // Save round stats for all players
-  useEffect(() => {
-    if (!gameState || statsSaved) return;
-    
-    const saveRoundStats = async () => {
-      const updates: RoundStatsUpdate[] = gameState.players.map(player => {
-        const pointsThisRound = result.pointsAwarded.find(p => p.playerId === player.id)?.points || 0;
-        const wasSpy = player.id === result.spyId;
-        const votedForSpy = player.votedFor === result.spyId;
-        
-        return {
-          playerName: player.name,
-          points: pointsThisRound,
-          wasSpy,
-          escapedAsSpy: wasSpy && result.spyEscaped,
-          guessedWordCorrectly: wasSpy && result.spyGuessedCorrectly,
-          caughtSpy: !wasSpy && votedForSpy,
-          wasSpyCaught: wasSpy && result.spyWasFound,
-        };
-      });
-      
-      await updatePlayerRoundStats(updates);
-      console.log('[RoundResult] Saved round stats for all players');
-      setStatsSaved(true);
-    };
-    
-    saveRoundStats();
-  }, [gameState, result, statsSaved]);
 
   if (!gameState) {
     return null;
@@ -239,7 +209,7 @@ const RoundResultScreen: React.FC = () => {
                 <Image source={require('../../assets/spy-icon.png')} style={{width: 40, height: 40, marginRight: 12}} resizeMode="contain" />
                 <View style={styles.spyDetails}>
                   <Text style={styles.spyLabel}>سیخوڕ</Text>
-                  <Text style={styles.spyName}>{result.spyName}</Text>
+                  <Text style={styles.spyName}>{result.spyNames.join('، ')}</Text>
                 </View>
               </View>
               
@@ -370,7 +340,7 @@ const RoundResultScreen: React.FC = () => {
                   name={player.name}
                   score={getPlayerScore(player.id)}
                   index={index}
-                  isSpy={player.id === result.spyId}
+                  isSpy={result.spyIds.includes(player.id)}
                   revealed={true}
                   showScore={true}
                 />

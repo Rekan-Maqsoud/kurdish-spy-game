@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { GameState, GameSettings, Player, CategoryId, GamePhase, RoundResult, SavedGamePlayer, GamePlayerStats } from '../types';
 import { getRandomWord, getSpyGuessOptions, getCategoryById } from '../data/words';
-import { loadSettings, saveSettings, DEFAULT_SETTINGS, saveHighScore, saveGame } from '../utils/storage';
+import { loadSettings, saveSettings, DEFAULT_SETTINGS, saveHighScore, saveGame, updatePlayerRoundStats, RoundStatsUpdate, loadRecentWords, saveRecentWords } from '../utils/storage';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -32,11 +32,11 @@ type GameAction =
       firstRound: {
         word: string;
         categoryId: CategoryId;
-        spyId: string;
+        spyIds: string[];
         spyGuessOptions: string[];
       }
     } }
-  | { type: 'START_ROUND'; payload: { word: string; categoryId: CategoryId; spyId: string; spyGuessOptions: string[] } }
+  | { type: 'START_ROUND'; payload: { word: string; categoryId: CategoryId; spyIds: string[]; spyGuessOptions: string[] } }
   | { type: 'MARK_SEEN_WORD'; payload: string }
   | { type: 'SUBMIT_VOTE'; payload: { voterId: string; suspectId: string } }
   | { type: 'SET_PHASE'; payload: GamePhase }
@@ -58,6 +58,42 @@ const initialState: State = {
   roundResults: [],
 };
 
+const clampSpyCount = (count: number, totalPlayers: number) => {
+  const maxSpies = Math.max(1, totalPlayers - 1);
+  return Math.max(1, Math.min(count, maxSpies));
+};
+
+const pickSpyIds = (players: Player[], numberOfSpies: number): string[] => {
+  const spyCount = clampSpyCount(numberOfSpies, players.length);
+  const shuffled = [...players].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, spyCount).map(p => p.id);
+};
+
+const getSpyVoteSummary = (players: Player[], spyIds: string[]) => {
+  const nonSpyIds = players.filter(p => !spyIds.includes(p.id)).map(p => p.id);
+  const voteCounts = new Map<string, number>();
+  players.forEach(p => {
+    if (!nonSpyIds.includes(p.id)) return;
+    if (!p.votedFor) return;
+    voteCounts.set(p.votedFor, (voteCounts.get(p.votedFor) || 0) + 1);
+  });
+
+  const maxVotes = voteCounts.size > 0 ? Math.max(...voteCounts.values()) : 0;
+  const topVotedIds = Array.from(voteCounts.entries())
+    .filter(([, count]) => count === maxVotes)
+    .map(([id]) => id);
+  const hasMajority = maxVotes > nonSpyIds.length / 2;
+  const caughtSpyIds = hasMajority
+    ? topVotedIds.filter(id => spyIds.includes(id))
+    : [];
+
+  return {
+    spyWasFound: caughtSpyIds.length > 0,
+    spyEscaped: caughtSpyIds.length === 0,
+    caughtSpyIds,
+  };
+};
+
 function gameReducer(state: State, action: GameAction): State {
   switch (action.type) {
     case 'SET_SETTINGS':
@@ -74,12 +110,12 @@ function gameReducer(state: State, action: GameAction): State {
           currentCategory: action.payload.firstRound.categoryId,
           players: action.payload.players.map(p => ({
             ...p,
-            isSpy: p.id === action.payload.firstRound.spyId,
+            isSpy: action.payload.firstRound.spyIds.includes(p.id),
             hasVoted: false,
             votedFor: null,
             hasSeenWord: false,
           })),
-          spyId: action.payload.firstRound.spyId,
+          spyIds: action.payload.firstRound.spyIds,
           phase: 'distribution',
           usedWords: [action.payload.firstRound.word],
           roundStartTime: Date.now(),
@@ -89,7 +125,7 @@ function gameReducer(state: State, action: GameAction): State {
       };
 
     case 'START_ROUND':
-      console.log('[GameReducer] START_ROUND - word:', action.payload.word, 'spyId:', action.payload.spyId);
+      console.log('[GameReducer] START_ROUND - word:', action.payload.word, 'spyIds:', action.payload.spyIds);
       if (!state.gameState) return state;
       return {
         ...state,
@@ -98,13 +134,13 @@ function gameReducer(state: State, action: GameAction): State {
           currentRound: state.gameState.currentRound + 1,
           currentWord: action.payload.word,
           currentCategory: action.payload.categoryId,
-          spyId: action.payload.spyId,
+          spyIds: action.payload.spyIds,
           phase: 'distribution',
           roundStartTime: Date.now(),
           spyGuessOptions: action.payload.spyGuessOptions,
           players: state.gameState.players.map(p => ({
             ...p,
-            isSpy: p.id === action.payload.spyId,
+            isSpy: action.payload.spyIds.includes(p.id),
             hasVoted: false,
             votedFor: null,
             hasSeenWord: false,
@@ -160,7 +196,7 @@ function gameReducer(state: State, action: GameAction): State {
         ...state,
         gameState: {
           ...state.gameState,
-          usedWords: [...state.gameState.usedWords, action.payload],
+          usedWords: [...state.gameState.usedWords, action.payload].slice(-15),
         },
       };
 
@@ -206,12 +242,14 @@ function gameReducer(state: State, action: GameAction): State {
 
 export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(gameReducer, initialState);
+  const [recentWords, setRecentWords] = React.useState<string[]>([]);
 
   // Load settings on mount
   useEffect(() => {
     loadSettings().then(settings => {
       dispatch({ type: 'SET_SETTINGS', payload: settings });
     });
+    loadRecentWords().then(words => setRecentWords(words));
   }, []);
 
   const updateSettings = async (newSettings: Partial<GameSettings>) => {
@@ -224,7 +262,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     console.log('[GameContext] initializeGame called with', players.length, 'players');
     
     // Get the first word immediately
-    const wordData = getRandomWord(state.settings.selectedCategories, []);
+    const wordData = getRandomWord(state.settings.selectedCategories, recentWords);
     
     if (!wordData) {
       console.error('[GameContext] No words available for selected categories');
@@ -234,9 +272,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     console.log('[GameContext] First word selected:', wordData.word);
     
     // Random spy selection
-    const spyIndex = Math.floor(Math.random() * players.length);
-    const spyId = players[spyIndex].id;
-    console.log('[GameContext] First spy selected:', players[spyIndex].name);
+    const spyIds = pickSpyIds(players, state.settings.numberOfSpies || 1);
+    const spyNames = players.filter(p => spyIds.includes(p.id)).map(p => p.name).join(', ');
+    console.log('[GameContext] First spy selected:', spyNames);
     
     // Generate spy guess options
     const spyGuessOptions = getSpyGuessOptions(
@@ -253,10 +291,16 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         firstRound: {
           word: wordData.word,
           categoryId: wordData.categoryId,
-          spyId,
+          spyIds,
           spyGuessOptions,
         }
       },
+    });
+
+    const updatedRecentWords = [...recentWords.filter(w => w !== wordData.word), wordData.word].slice(-15);
+    setRecentWords(updatedRecentWords);
+    saveRecentWords(updatedRecentWords).catch(error => {
+      console.error('[GameContext] Error saving recent words:', error);
     });
   };
 
@@ -270,9 +314,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     console.log('[GameContext] Current round:', state.gameState.currentRound, 'Total rounds:', state.gameState.totalRounds);
     console.log('[GameContext] Used words:', state.gameState.usedWords);
 
+    const combinedUsedWords = Array.from(new Set([
+      ...recentWords,
+      ...state.gameState.usedWords,
+    ]));
+
     const wordData = getRandomWord(
       state.settings.selectedCategories,
-      state.gameState.usedWords
+      combinedUsedWords
     );
 
     if (!wordData) {
@@ -283,9 +332,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     console.log('[GameContext] Selected word:', wordData.word, 'Category:', wordData.categoryId);
 
     // Random spy selection
-    const spyIndex = Math.floor(Math.random() * state.gameState.players.length);
-    const spyId = state.gameState.players[spyIndex].id;
-    console.log('[GameContext] Selected spy:', state.gameState.players[spyIndex].name);
+    const spyIds = pickSpyIds(state.gameState.players, state.settings.numberOfSpies || 1);
+    const spyNames = state.gameState.players.filter(p => spyIds.includes(p.id)).map(p => p.name).join(', ');
+    console.log('[GameContext] Selected spy:', spyNames);
 
     // Generate spy guess options
     const spyGuessOptions = getSpyGuessOptions(
@@ -299,12 +348,17 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       payload: {
         word: wordData.word,
         categoryId: wordData.categoryId,
-        spyId,
+        spyIds,
         spyGuessOptions,
       },
     });
 
     dispatch({ type: 'ADD_USED_WORD', payload: wordData.word });
+    const updatedRecentWords = [...recentWords.filter(w => w !== wordData.word), wordData.word].slice(-15);
+    setRecentWords(updatedRecentWords);
+    saveRecentWords(updatedRecentWords).catch(error => {
+      console.error('[GameContext] Error saving recent words:', error);
+    });
     console.log('[GameContext] New round started successfully');
   };
 
@@ -322,21 +376,16 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!state.gameState) return false;
     const correct = word === state.gameState.currentWord;
     
-    const { players, spyId, currentWord, currentCategory, currentRound } = state.gameState;
-    const spy = players.find(p => p.id === spyId)!;
-    
-    // Count votes for spy
-    const votesForSpy = players.filter(p => p.votedFor === spyId).length;
-    const spyWasFound = votesForSpy > players.length / 2;
-    const spyEscaped = !spyWasFound;
+    const { players, spyIds, currentWord, currentCategory, currentRound } = state.gameState;
+    const spies = players.filter(p => spyIds.includes(p.id));
+    const { spyWasFound, spyEscaped, caughtSpyIds } = getSpyVoteSummary(players, spyIds);
     
     const allScoreUpdates: { playerId: string; points: number }[] = [];
     const pointsAwarded: { playerId: string; points: number }[] = [];
     
-    // IMPROVEMENT 1: Award points to players who voted correctly for the spy
-    // (even if spy wasn't found by majority, correct individual votes still count)
+    // Award points to non-spies who voted for a spy
     players.forEach(p => {
-      if (p.votedFor === spyId && p.id !== spyId) {
+      if (!spyIds.includes(p.id) && p.votedFor && spyIds.includes(p.votedFor)) {
         allScoreUpdates.push({
           playerId: p.id,
           points: state.settings.pointsForFindingSpy,
@@ -348,17 +397,23 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // IMPROVEMENT 2: Spy gets escape points if they weren't found (independent of guessing)
     if (spyEscaped) {
       const escapePoints = state.settings.pointsForSpyEscape || 1;
-      allScoreUpdates.push({ playerId: spyId, points: escapePoints });
-      pointsAwarded.push({ playerId: spyId, points: escapePoints });
+      spies.forEach(spy => {
+        if (!caughtSpyIds.includes(spy.id)) {
+          allScoreUpdates.push({ playerId: spy.id, points: escapePoints });
+          pointsAwarded.push({ playerId: spy.id, points: escapePoints });
+        }
+      });
     }
     
     // IMPROVEMENT 2: Spy gets guessing points if they guessed correctly (independent of escape)
     if (correct) {
-      allScoreUpdates.push({ 
-        playerId: spyId, 
-        points: state.settings.pointsForSpyGuessing 
+      spies.forEach(spy => {
+        allScoreUpdates.push({ 
+          playerId: spy.id, 
+          points: state.settings.pointsForSpyGuessing 
+        });
+        pointsAwarded.push({ playerId: spy.id, points: state.settings.pointsForSpyGuessing });
       });
-      pointsAwarded.push({ playerId: spyId, points: state.settings.pointsForSpyGuessing });
     }
     
     // Apply all score updates
@@ -377,8 +432,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       round: currentRound,
       word: currentWord,
       category: currentCategory,
-      spyId,
-      spyName: spy.name,
+      spyIds,
+      spyNames: spies.map(s => s.name),
+      caughtSpyIds,
       spyWasFound,
       spyEscaped,
       spyGuessedCorrectly: correct,
@@ -388,6 +444,27 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     dispatch({ type: 'ADD_ROUND_RESULT', payload: roundResult });
     console.log('[GameContext] Round result added:', roundResult);
+
+    const roundUpdates: RoundStatsUpdate[] = players.map(player => {
+      const pointsThisRound =
+        roundResult.pointsAwarded.find(p => p.playerId === player.id)?.points || 0;
+      const wasSpy = roundResult.spyIds.includes(player.id);
+      const votedForSpy = player.votedFor ? roundResult.spyIds.includes(player.votedFor) : false;
+
+      return {
+        playerName: player.name,
+        points: pointsThisRound,
+        wasSpy,
+        escapedAsSpy: wasSpy && roundResult.spyEscaped,
+        guessedWordCorrectly: wasSpy && roundResult.spyGuessedCorrectly,
+        caughtSpy: !wasSpy && votedForSpy,
+        wasSpyCaught: wasSpy && roundResult.caughtSpyIds.includes(player.id),
+      };
+    });
+
+    updatePlayerRoundStats(roundUpdates).catch(error => {
+      console.error('[GameContext] Error saving round stats:', error);
+    });
     
     return correct;
   };
@@ -395,21 +472,16 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const skipSpyGuess = () => {
     if (!state.gameState) return;
     
-    const { players, spyId, currentWord, currentCategory, currentRound } = state.gameState;
-    const spy = players.find(p => p.id === spyId)!;
-    
-    // Count votes for spy
-    const votesForSpy = players.filter(p => p.votedFor === spyId).length;
-    const spyWasFound = votesForSpy > players.length / 2;
-    const spyEscaped = !spyWasFound;
+    const { players, spyIds, currentWord, currentCategory, currentRound } = state.gameState;
+    const spies = players.filter(p => spyIds.includes(p.id));
+    const { spyWasFound, spyEscaped, caughtSpyIds } = getSpyVoteSummary(players, spyIds);
     
     const allScoreUpdates: { playerId: string; points: number }[] = [];
     const pointsAwarded: { playerId: string; points: number }[] = [];
     
-    // IMPROVEMENT 1: Award points to players who voted correctly for the spy
-    // (even if spy wasn't found by majority, correct individual votes still count)
+    // Award points to non-spies who voted for a spy
     players.forEach(p => {
-      if (p.votedFor === spyId && p.id !== spyId) {
+      if (!spyIds.includes(p.id) && p.votedFor && spyIds.includes(p.votedFor)) {
         allScoreUpdates.push({
           playerId: p.id,
           points: state.settings.pointsForFindingSpy,
@@ -421,8 +493,12 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // IMPROVEMENT 2: Spy gets escape points if they weren't found
     if (spyEscaped) {
       const escapePoints = state.settings.pointsForSpyEscape || 1;
-      allScoreUpdates.push({ playerId: spyId, points: escapePoints });
-      pointsAwarded.push({ playerId: spyId, points: escapePoints });
+      spies.forEach(spy => {
+        if (!caughtSpyIds.includes(spy.id)) {
+          allScoreUpdates.push({ playerId: spy.id, points: escapePoints });
+          pointsAwarded.push({ playerId: spy.id, points: escapePoints });
+        }
+      });
     }
     
     // Apply all score updates
@@ -441,8 +517,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       round: currentRound,
       word: currentWord,
       category: currentCategory,
-      spyId,
-      spyName: spy.name,
+      spyIds,
+      spyNames: spies.map(s => s.name),
+      caughtSpyIds,
       spyWasFound,
       spyEscaped,
       spyGuessedCorrectly: false,
@@ -452,6 +529,27 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     dispatch({ type: 'ADD_ROUND_RESULT', payload: roundResult });
     console.log('[GameContext] Round result added (spy skipped):', roundResult);
+
+    const roundUpdates: RoundStatsUpdate[] = players.map(player => {
+      const pointsThisRound =
+        roundResult.pointsAwarded.find(p => p.playerId === player.id)?.points || 0;
+      const wasSpy = roundResult.spyIds.includes(player.id);
+      const votedForSpy = player.votedFor ? roundResult.spyIds.includes(player.votedFor) : false;
+
+      return {
+        playerName: player.name,
+        points: pointsThisRound,
+        wasSpy,
+        escapedAsSpy: wasSpy && roundResult.spyEscaped,
+        guessedWordCorrectly: false,
+        caughtSpy: !wasSpy && votedForSpy,
+        wasSpyCaught: wasSpy && roundResult.caughtSpyIds.includes(player.id),
+      };
+    });
+
+    updatePlayerRoundStats(roundUpdates).catch(error => {
+      console.error('[GameContext] Error saving round stats (skip):', error);
+    });
   };
 
   const calculateRoundResults = (): RoundResult => {
@@ -459,12 +557,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       throw new Error('No game state');
     }
 
-    const { players, spyId, currentWord, currentCategory, currentRound } = state.gameState;
-    const spy = players.find(p => p.id === spyId)!;
-
-    // Count votes for spy
-    const votesForSpy = players.filter(p => p.votedFor === spyId).length;
-    const spyWasFound = votesForSpy > players.length / 2;
+    const { players, spyIds, currentWord, currentCategory, currentRound } = state.gameState;
+    const spies = players.filter(p => spyIds.includes(p.id));
+    const { spyWasFound, spyEscaped, caughtSpyIds } = getSpyVoteSummary(players, spyIds);
 
     const votes = players.map(p => ({
       playerId: p.id,
@@ -475,7 +570,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Award points for correct votes
     players.forEach(p => {
-      if (p.votedFor === spyId && p.id !== spyId) {
+      if (!spyIds.includes(p.id) && p.votedFor && spyIds.includes(p.votedFor)) {
         pointsAwarded.push({
           playerId: p.id,
           points: state.settings.pointsForFindingSpy,
@@ -487,10 +582,11 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       round: currentRound,
       word: currentWord,
       category: currentCategory,
-      spyId,
-      spyName: spy.name,
+      spyIds,
+      spyNames: spies.map(s => s.name),
+      caughtSpyIds,
       spyWasFound,
-      spyEscaped: !spyWasFound,
+      spyEscaped,
       spyGuessedCorrectly: false, // Will be updated in spy guess phase
       votes,
       pointsAwarded,
@@ -537,14 +633,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (pointsThisRound > 0) stats.roundsWon += 1;
           else stats.roundsLost += 1;
 
-          if (player.id === result.spyId) {
+          if (result.spyIds.includes(player.id)) {
             stats.timesAsSpy += 1;
             if (result.spyEscaped) stats.timesEscapedAsSpy += 1;
             if (result.spyGuessedCorrectly) stats.timesCorrectlyGuessedWord += 1;
-            if (result.spyWasFound) stats.timesSpyWasCaught += 1;
+            if (result.caughtSpyIds.includes(player.id)) stats.timesSpyWasCaught += 1;
           } else {
             const vote = result.votes.find(v => v.playerId === player.id);
-            if (vote?.votedForId === result.spyId) stats.timesCaughtSpy += 1;
+            if (vote?.votedForId && result.spyIds.includes(vote.votedForId)) stats.timesCaughtSpy += 1;
           }
         });
       });

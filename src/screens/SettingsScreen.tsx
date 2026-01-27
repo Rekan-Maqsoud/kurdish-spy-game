@@ -22,6 +22,7 @@ const SettingsScreen: React.FC = () => {
   
   const [numberOfRounds, setNumberOfRounds] = useState(settings.numberOfRounds);
   const [spyGuessOptions, setSpyGuessOptions] = useState(settings.spyGuessOptions);
+  const [numberOfSpies, setNumberOfSpies] = useState(settings.numberOfSpies ?? 1);
   const [pointsForFindingSpy, setPointsForFindingSpy] = useState(settings.pointsForFindingSpy);
   const [pointsForSpyGuessing, setPointsForSpyGuessing] = useState(settings.pointsForSpyGuessing);
   const [pointsForSpyEscape, setPointsForSpyEscape] = useState(settings.pointsForSpyEscape || 1);
@@ -47,6 +48,7 @@ const SettingsScreen: React.FC = () => {
     updateSettings({
       numberOfRounds,
       spyGuessOptions,
+      numberOfSpies,
       pointsForFindingSpy,
       pointsForSpyGuessing,
       pointsForSpyEscape,
@@ -129,6 +131,17 @@ const SettingsScreen: React.FC = () => {
               onDecrease={() => setSpyGuessOptions(n => n - 1)}
               min={2}
               max={8}
+            />
+
+            <View style={styles.divider} />
+
+            <NumberSelector
+              label="ژمارەی سیخوڕەکان"
+              value={numberOfSpies}
+              onIncrease={() => setNumberOfSpies(n => n + 1)}
+              onDecrease={() => setNumberOfSpies(n => n - 1)}
+              min={1}
+              max={5}
             />
             
             <View style={styles.divider} />

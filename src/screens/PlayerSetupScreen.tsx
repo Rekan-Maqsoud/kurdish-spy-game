@@ -137,6 +137,7 @@ const PlayerSetupScreen: React.FC = () => {
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Players List */}
           {players.map((player, index) => {
@@ -171,7 +172,12 @@ const PlayerSetupScreen: React.FC = () => {
                 {/* Name Suggestions */}
                 {suggestions.length > 0 && (
                   <View style={styles.suggestionsContainer}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestionsScroll}>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.suggestionsScroll}
+                      keyboardShouldPersistTaps="handled"
+                    >
                       {suggestions.map((name, idx) => (
                         <TouchableOpacity
                           key={idx}

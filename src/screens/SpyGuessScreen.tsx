@@ -31,7 +31,8 @@ const SpyGuessScreen: React.FC = () => {
     return null;
   }
 
-  const spy = gameState.players.find(p => p.id === gameState.spyId)!;
+  const spies = gameState.players.filter(p => gameState.spyIds.includes(p.id));
+  const spyNames = spies.map(s => s.name).join('، ');
 
   const handleGuess = () => {
     if (!selectedWord) return;
@@ -48,8 +49,11 @@ const SpyGuessScreen: React.FC = () => {
     const finalResult: RoundResult = {
       ...result,
       spyGuessedCorrectly: guessedCorrectly,
-      pointsAwarded: guessedCorrectly
-        ? [...result.pointsAwarded, { playerId: spy.id, points: settings.pointsForSpyGuessing }]
+      pointsAwarded: guessedCorrectly && !result.spyWasFound
+        ? [
+            ...result.pointsAwarded,
+            ...spies.map(spy => ({ playerId: spy.id, points: settings.pointsForSpyGuessing })),
+          ]
         : result.pointsAwarded,
     };
     
@@ -83,7 +87,7 @@ const SpyGuessScreen: React.FC = () => {
               {guessedCorrectly && (
                 <View style={styles.pointsEarned}>
                   <Text style={styles.pointsText}>
-                    {spy.name} {settings.pointsForSpyGuessing} خاڵی برد!
+                    {spyNames} {settings.pointsForSpyGuessing} خاڵی برد!
                   </Text>
                 </View>
               )}
@@ -124,7 +128,7 @@ const SpyGuessScreen: React.FC = () => {
 
         <GlassCard style={styles.spyCard}>
           <Image source={require('../../assets/spy-icon.png')} style={{width: 60, height: 60, marginBottom: 8}} resizeMode="contain" />
-          <Text style={styles.spyName}>{spy.name}</Text>
+          <Text style={styles.spyName}>{spyNames}</Text>
           <Text style={styles.spyHint}>
             ئێستا دەتوانیت وشەکە تەخمین بکەیت!{'\n'}
             ئەگەر وشەکەت دۆزیەوە {settings.pointsForSpyGuessing} خاڵ دەبیت.
