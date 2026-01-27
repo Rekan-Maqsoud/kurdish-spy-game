@@ -34,7 +34,7 @@ const HomeScreen: React.FC = () => {
           <GlassCard style={styles.statsCard}>
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{getTotalWordCount()}+</Text>
+                <Text style={styles.statNumber}>{getTotalWordCount()}</Text>
                 <Text style={styles.statLabel}>وشە</Text>
               </View>
               <View style={styles.statDivider} />

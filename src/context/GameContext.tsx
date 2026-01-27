@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
-import { GameState, GameSettings, Player, CategoryId, GamePhase, RoundResult } from '../types';
+import { GameState, GameSettings, Player, CategoryId, GamePhase, RoundResult, SavedGamePlayer, GamePlayerStats } from '../types';
 import { getRandomWord, getSpyGuessOptions, getCategoryById } from '../data/words';
 import { loadSettings, saveSettings, DEFAULT_SETTINGS, saveHighScore, saveGame } from '../utils/storage';
 import 'react-native-get-random-values';
@@ -328,32 +328,42 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Count votes for spy
     const votesForSpy = players.filter(p => p.votedFor === spyId).length;
     const spyWasFound = votesForSpy > players.length / 2;
+    const spyEscaped = !spyWasFound;
     
-    // Award points if spy guessed correctly
-    if (correct) {
-      dispatch({ 
-        type: 'UPDATE_PLAYER_SCORES', 
-        payload: [{ 
-          playerId: state.gameState.spyId, 
-          points: state.settings.pointsForSpyGuessing 
-        }] 
-      });
+    const allScoreUpdates: { playerId: string; points: number }[] = [];
+    const pointsAwarded: { playerId: string; points: number }[] = [];
+    
+    // IMPROVEMENT 1: Award points to players who voted correctly for the spy
+    // (even if spy wasn't found by majority, correct individual votes still count)
+    players.forEach(p => {
+      if (p.votedFor === spyId && p.id !== spyId) {
+        allScoreUpdates.push({
+          playerId: p.id,
+          points: state.settings.pointsForFindingSpy,
+        });
+        pointsAwarded.push({ playerId: p.id, points: state.settings.pointsForFindingSpy });
+      }
+    });
+    
+    // IMPROVEMENT 2: Spy gets escape points if they weren't found (independent of guessing)
+    if (spyEscaped) {
+      const escapePoints = state.settings.pointsForSpyEscape || 1;
+      allScoreUpdates.push({ playerId: spyId, points: escapePoints });
+      pointsAwarded.push({ playerId: spyId, points: escapePoints });
     }
     
-    // Also award points to players who found the spy
-    if (spyWasFound) {
-      const pointsForFinders: { playerId: string; points: number }[] = [];
-      state.gameState.players.forEach(p => {
-        if (p.votedFor === state.gameState!.spyId && p.id !== state.gameState!.spyId) {
-          pointsForFinders.push({
-            playerId: p.id,
-            points: state.settings.pointsForFindingSpy,
-          });
-        }
+    // IMPROVEMENT 2: Spy gets guessing points if they guessed correctly (independent of escape)
+    if (correct) {
+      allScoreUpdates.push({ 
+        playerId: spyId, 
+        points: state.settings.pointsForSpyGuessing 
       });
-      if (pointsForFinders.length > 0) {
-        dispatch({ type: 'UPDATE_PLAYER_SCORES', payload: pointsForFinders });
-      }
+      pointsAwarded.push({ playerId: spyId, points: state.settings.pointsForSpyGuessing });
+    }
+    
+    // Apply all score updates
+    if (allScoreUpdates.length > 0) {
+      dispatch({ type: 'UPDATE_PLAYER_SCORES', payload: allScoreUpdates });
     }
     
     // Create votes array
@@ -361,19 +371,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       playerId: p.id,
       votedForId: p.votedFor || '',
     }));
-    
-    // Create points awarded array
-    const pointsAwarded: { playerId: string; points: number }[] = [];
-    if (correct) {
-      pointsAwarded.push({ playerId: spyId, points: state.settings.pointsForSpyGuessing });
-    }
-    if (spyWasFound) {
-      players.forEach(p => {
-        if (p.votedFor === spyId && p.id !== spyId) {
-          pointsAwarded.push({ playerId: p.id, points: state.settings.pointsForFindingSpy });
-        }
-      });
-    }
     
     // Add round result
     const roundResult: RoundResult = {
@@ -383,6 +380,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       spyId,
       spyName: spy.name,
       spyWasFound,
+      spyEscaped,
       spyGuessedCorrectly: correct,
       votes,
       pointsAwarded,
@@ -403,21 +401,33 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Count votes for spy
     const votesForSpy = players.filter(p => p.votedFor === spyId).length;
     const spyWasFound = votesForSpy > players.length / 2;
+    const spyEscaped = !spyWasFound;
     
-    // Award points to players who found the spy
-    if (spyWasFound) {
-      const pointsForFinders: { playerId: string; points: number }[] = [];
-      players.forEach(p => {
-        if (p.votedFor === spyId && p.id !== spyId) {
-          pointsForFinders.push({
-            playerId: p.id,
-            points: state.settings.pointsForFindingSpy,
-          });
-        }
-      });
-      if (pointsForFinders.length > 0) {
-        dispatch({ type: 'UPDATE_PLAYER_SCORES', payload: pointsForFinders });
+    const allScoreUpdates: { playerId: string; points: number }[] = [];
+    const pointsAwarded: { playerId: string; points: number }[] = [];
+    
+    // IMPROVEMENT 1: Award points to players who voted correctly for the spy
+    // (even if spy wasn't found by majority, correct individual votes still count)
+    players.forEach(p => {
+      if (p.votedFor === spyId && p.id !== spyId) {
+        allScoreUpdates.push({
+          playerId: p.id,
+          points: state.settings.pointsForFindingSpy,
+        });
+        pointsAwarded.push({ playerId: p.id, points: state.settings.pointsForFindingSpy });
       }
+    });
+    
+    // IMPROVEMENT 2: Spy gets escape points if they weren't found
+    if (spyEscaped) {
+      const escapePoints = state.settings.pointsForSpyEscape || 1;
+      allScoreUpdates.push({ playerId: spyId, points: escapePoints });
+      pointsAwarded.push({ playerId: spyId, points: escapePoints });
+    }
+    
+    // Apply all score updates
+    if (allScoreUpdates.length > 0) {
+      dispatch({ type: 'UPDATE_PLAYER_SCORES', payload: allScoreUpdates });
     }
     
     // Create votes array
@@ -425,16 +435,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       playerId: p.id,
       votedForId: p.votedFor || '',
     }));
-    
-    // Create points awarded array
-    const pointsAwarded: { playerId: string; points: number }[] = [];
-    if (spyWasFound) {
-      players.forEach(p => {
-        if (p.votedFor === spyId && p.id !== spyId) {
-          pointsAwarded.push({ playerId: p.id, points: state.settings.pointsForFindingSpy });
-        }
-      });
-    }
     
     // Add round result (spy skipped guessing)
     const roundResult: RoundResult = {
@@ -444,6 +444,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       spyId,
       spyName: spy.name,
       spyWasFound,
+      spyEscaped,
       spyGuessedCorrectly: false,
       votes,
       pointsAwarded,
@@ -489,6 +490,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       spyId,
       spyName: spy.name,
       spyWasFound,
+      spyEscaped: !spyWasFound,
       spyGuessedCorrectly: false, // Will be updated in spy guess phase
       votes,
       pointsAwarded,
@@ -501,6 +503,59 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!state.gameState) return;
 
     const { phase, players, currentRound, totalRounds } = state.gameState;
+
+    const buildGamePlayerDetails = (
+      gamePlayers: Player[],
+      results: RoundResult[]
+    ): SavedGamePlayer[] => {
+      const winnerScore = Math.max(...gamePlayers.map(p => p.score));
+      const statsById = new Map<string, GamePlayerStats>();
+
+      gamePlayers.forEach(p => {
+        statsById.set(p.id, {
+          pointsEarned: 0,
+          roundsPlayed: 0,
+          roundsWon: 0,
+          roundsLost: 0,
+          timesAsSpy: 0,
+          timesEscapedAsSpy: 0,
+          timesCorrectlyGuessedWord: 0,
+          timesCaughtSpy: 0,
+          timesSpyWasCaught: 0,
+        });
+      });
+
+      results.forEach(result => {
+        gamePlayers.forEach(player => {
+          const stats = statsById.get(player.id);
+          if (!stats) return;
+
+          stats.roundsPlayed += 1;
+          const pointsThisRound =
+            result.pointsAwarded.find(p => p.playerId === player.id)?.points || 0;
+          stats.pointsEarned += pointsThisRound;
+          if (pointsThisRound > 0) stats.roundsWon += 1;
+          else stats.roundsLost += 1;
+
+          if (player.id === result.spyId) {
+            stats.timesAsSpy += 1;
+            if (result.spyEscaped) stats.timesEscapedAsSpy += 1;
+            if (result.spyGuessedCorrectly) stats.timesCorrectlyGuessedWord += 1;
+            if (result.spyWasFound) stats.timesSpyWasCaught += 1;
+          } else {
+            const vote = result.votes.find(v => v.playerId === player.id);
+            if (vote?.votedForId === result.spyId) stats.timesCaughtSpy += 1;
+          }
+        });
+      });
+
+      return gamePlayers.map(player => ({
+        name: player.name,
+        score: player.score,
+        isWinner: player.score === winnerScore && winnerScore > 0,
+        stats: statsById.get(player.id),
+      }));
+    };
 
     switch (phase) {
       case 'setup':
@@ -534,7 +589,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           saveGame({
             id: uuidv4(),
             date: new Date().toISOString(),
-            players: players.map(p => ({ name: p.name, score: p.score })),
+            players: buildGamePlayerDetails(players, state.roundResults),
             rounds: totalRounds,
             winner: winner.name,
           });

@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   spyGuessOptions: 4,
   pointsForFindingSpy: 1,
   pointsForSpyGuessing: 2,
+  pointsForSpyEscape: 1, // points spy gets for not being found
 };
 
 // Settings
@@ -113,7 +114,23 @@ export const loadPlayerStats = async (): Promise<PlayerStats[]> => {
   try {
     const stats = await AsyncStorage.getItem(STORAGE_KEYS.PLAYER_STATS);
     if (stats) {
-      return JSON.parse(stats);
+      // Migrate old stats to new format if needed
+      const parsed = JSON.parse(stats);
+      return parsed.map((p: any) => ({
+        name: p.name,
+        totalPoints: p.totalPoints || 0,
+        gamesPlayed: p.gamesPlayed || 0,
+        gamesWon: p.gamesWon || 0,
+        roundsPlayed: p.roundsPlayed || 0,
+        roundsWon: p.roundsWon || 0,
+        roundsLost: p.roundsLost || 0,
+        timesAsSpy: p.timesAsSpy || 0,
+        timesEscapedAsSpy: p.timesEscapedAsSpy || 0,
+        timesCorrectlyGuessedWord: p.timesCorrectlyGuessedWord || 0,
+        timesCaughtSpy: p.timesCaughtSpy || 0,
+        timesSpyWasCaught: p.timesSpyWasCaught || 0,
+        lastPlayed: p.lastPlayed || new Date().toISOString(),
+      }));
     }
     return [];
   } catch (error) {
@@ -122,9 +139,78 @@ export const loadPlayerStats = async (): Promise<PlayerStats[]> => {
   }
 };
 
-export const updatePlayerStats = async (
+// Interface for round stats update
+export interface RoundStatsUpdate {
+  playerName: string;
+  points: number;
+  wasSpy: boolean;
+  escapedAsSpy: boolean;        // If spy, did they escape (not caught)?
+  guessedWordCorrectly: boolean; // If spy, did they guess word?
+  caughtSpy: boolean;           // If not spy, did they vote for spy?
+  wasSpyCaught: boolean;        // If spy, were they caught?
+}
+
+// Update player stats after each round
+export const updatePlayerRoundStats = async (
+  updates: RoundStatsUpdate[]
+): Promise<void> => {
+  try {
+    const existing = await loadPlayerStats();
+    
+    for (const update of updates) {
+      const normalizedName = update.playerName.trim().toLowerCase();
+      const existingIndex = existing.findIndex(
+        p => p.name.trim().toLowerCase() === normalizedName
+      );
+
+      if (existingIndex >= 0) {
+        const player = existing[existingIndex];
+        player.totalPoints += update.points;
+        player.roundsPlayed += 1;
+        if (update.points > 0) player.roundsWon += 1;
+        else player.roundsLost += 1;
+        
+        if (update.wasSpy) {
+          player.timesAsSpy += 1;
+          if (update.escapedAsSpy) player.timesEscapedAsSpy += 1;
+          if (update.guessedWordCorrectly) player.timesCorrectlyGuessedWord += 1;
+          if (update.wasSpyCaught) player.timesSpyWasCaught += 1;
+        } else {
+          if (update.caughtSpy) player.timesCaughtSpy += 1;
+        }
+        
+        player.lastPlayed = new Date().toISOString();
+      } else {
+        existing.push({
+          name: update.playerName.trim(),
+          totalPoints: update.points,
+          gamesPlayed: 0,
+          gamesWon: 0,
+          roundsPlayed: 1,
+          roundsWon: update.points > 0 ? 1 : 0,
+          roundsLost: update.points > 0 ? 0 : 1,
+          timesAsSpy: update.wasSpy ? 1 : 0,
+          timesEscapedAsSpy: update.wasSpy && update.escapedAsSpy ? 1 : 0,
+          timesCorrectlyGuessedWord: update.wasSpy && update.guessedWordCorrectly ? 1 : 0,
+          timesCaughtSpy: !update.wasSpy && update.caughtSpy ? 1 : 0,
+          timesSpyWasCaught: update.wasSpy && update.wasSpyCaught ? 1 : 0,
+          lastPlayed: new Date().toISOString(),
+        });
+      }
+      
+      // Save player name for suggestions
+      await savePlayerName(update.playerName);
+    }
+
+    await AsyncStorage.setItem(STORAGE_KEYS.PLAYER_STATS, JSON.stringify(existing));
+  } catch (error) {
+    console.error('Error updating player round stats:', error);
+  }
+};
+
+// Update player stats at game end (for games won counter)
+export const updatePlayerGameEnd = async (
   playerName: string,
-  points: number,
   won: boolean
 ): Promise<void> => {
   try {
@@ -135,28 +221,42 @@ export const updatePlayerStats = async (
     );
 
     if (existingIndex >= 0) {
-      existing[existingIndex].totalPoints += points;
       existing[existingIndex].gamesPlayed += 1;
       if (won) existing[existingIndex].gamesWon += 1;
       existing[existingIndex].lastPlayed = new Date().toISOString();
-      // Keep original name casing
     } else {
+      // Player should already exist from round stats, but just in case
       existing.push({
         name: playerName.trim(),
-        totalPoints: points,
+        totalPoints: 0,
         gamesPlayed: 1,
         gamesWon: won ? 1 : 0,
+        roundsPlayed: 0,
+        roundsWon: 0,
+        roundsLost: 0,
+        timesAsSpy: 0,
+        timesEscapedAsSpy: 0,
+        timesCorrectlyGuessedWord: 0,
+        timesCaughtSpy: 0,
+        timesSpyWasCaught: 0,
         lastPlayed: new Date().toISOString(),
       });
     }
 
     await AsyncStorage.setItem(STORAGE_KEYS.PLAYER_STATS, JSON.stringify(existing));
-    
-    // Also save player name for suggestions
     await savePlayerName(playerName);
   } catch (error) {
-    console.error('Error updating player stats:', error);
+    console.error('Error updating player game end stats:', error);
   }
+};
+
+// Legacy function - kept for backwards compatibility
+export const updatePlayerStats = async (
+  playerName: string,
+  points: number,
+  won: boolean
+): Promise<void> => {
+  await updatePlayerGameEnd(playerName, won);
 };
 
 // Player names for autocomplete suggestions
@@ -197,6 +297,8 @@ export default {
   clearAllData,
   loadPlayerStats,
   updatePlayerStats,
+  updatePlayerRoundStats,
+  updatePlayerGameEnd,
   savePlayerName,
   loadPlayerNames,
   DEFAULT_SETTINGS,

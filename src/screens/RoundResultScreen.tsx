@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Image } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { StyleSheet, View, Text, ScrollView, Image, Animated, Easing } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import Colors from '../constants/colors';
 import Typography from '../constants/typography';
 import { useGame } from '../context/GameContext';
 import { getCategoryById } from '../data/words';
+import { updatePlayerRoundStats, RoundStatsUpdate } from '../utils/storage';
 
 type RoundResultNavigationProp = NativeStackNavigationProp<RootStackParamList, 'RoundResult'>;
 type RoundResultRouteProp = RouteProp<RootStackParamList, 'RoundResult'>;
@@ -20,10 +21,89 @@ const RoundResultScreen: React.FC = () => {
   
   const { gameState, proceedToNextPhase, startNewRound } = useGame();
   const [shouldNavigateHome, setShouldNavigateHome] = useState(false);
+  const [statsSaved, setStatsSaved] = useState(false);
 
-  // Apply scores when entering screen
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const spyCardAnim = useRef(new Animated.Value(0)).current;
+  const pointsAnim = useRef(new Animated.Value(0)).current;
+  const bounceAnim = useRef(new Animated.Value(0)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const playerCardAnims = useRef<Animated.Value[]>([]).current;
+
   useEffect(() => {
-    // Scores are already calculated in the result, we need to update game state
+    // Initial animations
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 50,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.spring(spyCardAnim, {
+        toValue: 1,
+        friction: 6,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.timing(pointsAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Bounce animation for badges
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounceAnim, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(bounceAnim, {
+          toValue: 0,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Animate player cards with stagger
+    if (gameState) {
+      gameState.players.forEach((_, index) => {
+        if (!playerCardAnims[index]) {
+          playerCardAnims[index] = new Animated.Value(0);
+        }
+      });
+
+      const animations = playerCardAnims.map((anim, index) =>
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 400,
+          delay: index * 100,
+          useNativeDriver: true,
+        })
+      );
+
+      Animated.stagger(100, animations).start();
+    }
   }, []);
 
   useEffect(() => {
@@ -31,6 +111,35 @@ const RoundResultScreen: React.FC = () => {
       navigation.navigate('Home');
     }
   }, [gameState, shouldNavigateHome, navigation]);
+
+  // Save round stats for all players
+  useEffect(() => {
+    if (!gameState || statsSaved) return;
+    
+    const saveRoundStats = async () => {
+      const updates: RoundStatsUpdate[] = gameState.players.map(player => {
+        const pointsThisRound = result.pointsAwarded.find(p => p.playerId === player.id)?.points || 0;
+        const wasSpy = player.id === result.spyId;
+        const votedForSpy = player.votedFor === result.spyId;
+        
+        return {
+          playerName: player.name,
+          points: pointsThisRound,
+          wasSpy,
+          escapedAsSpy: wasSpy && result.spyEscaped,
+          guessedWordCorrectly: wasSpy && result.spyGuessedCorrectly,
+          caughtSpy: !wasSpy && votedForSpy,
+          wasSpyCaught: wasSpy && result.spyWasFound,
+        };
+      });
+      
+      await updatePlayerRoundStats(updates);
+      console.log('[RoundResult] Saved round stats for all players');
+      setStatsSaved(true);
+    };
+    
+    saveRoundStats();
+  }, [gameState, result, statsSaved]);
 
   if (!gameState) {
     return null;
@@ -52,122 +161,237 @@ const RoundResultScreen: React.FC = () => {
 
   const handleNext = () => {
     if (isLastRound) {
-      // Apply final scores and go to game end
       navigation.navigate('GameEnd');
     } else {
-      // Start new round
       startNewRound();
       navigation.navigate('WordDistribution', { playerIndex: 0 });
     }
   };
 
+  const bounceInterpolation = bounceAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.05],
+  });
+
   return (
     <GradientBackground variant="game">
       <View style={styles.container}>
         {/* Header */}
-        <View style={styles.header}>
+        <Animated.View 
+          style={[
+            styles.header,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            }
+          ]}
+        >
           <Text style={styles.title}>ئەنجامی گەڕی {result.round}</Text>
-        </View>
+        </Animated.View>
 
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {/* Round Summary */}
-          <GlassCard style={styles.summaryCard}>
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryItem}>
-                <Ionicons name={(category?.icon || 'help-circle') as any} size={28} color="#fff" style={{marginBottom: 4}} />
-                <Text style={styles.summaryLabel}>پۆل</Text>
-                <Text style={styles.summaryValue}>{category?.name}</Text>
+          <Animated.View
+            style={{
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
+            }}
+          >
+            <GlassCard style={styles.summaryCard}>
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryItem}>
+                  <Ionicons name={(category?.icon || 'help-circle') as any} size={28} color="#fff" style={{marginBottom: 4}} />
+                  <Text style={styles.summaryLabel}>پۆل</Text>
+                  <Text style={styles.summaryValue}>{category?.name}</Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryItem}>
+                  <Ionicons name="document-text" size={24} color="#fff" style={{marginBottom: 4}} />
+                  <Text style={styles.summaryLabel}>وشە</Text>
+                  <Text style={styles.summaryValue}>{result.word}</Text>
+                </View>
               </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryItem}>
-                <Ionicons name="document-text" size={24} color="#fff" style={{marginBottom: 4}} />
-                <Text style={styles.summaryLabel}>وشە</Text>
-                <Text style={styles.summaryValue}>{result.word}</Text>
-              </View>
-            </View>
-          </GlassCard>
+            </GlassCard>
+          </Animated.View>
 
           {/* Spy Info */}
-          <GlassCard style={styles.spyInfoCard}>
-            <View style={styles.spyHeader}>
-              <Image source={require('../../assets/spy-icon.png')} style={{width: 40, height: 40, marginRight: 12}} resizeMode="contain" />
-              <View style={styles.spyDetails}>
-                <Text style={styles.spyLabel}>سیخوڕ</Text>
-                <Text style={styles.spyName}>{result.spyName}</Text>
-              </View>
-            </View>
-            
-            <View style={styles.spyResults}>
-              <View style={[
-                styles.resultBadge,
-                result.spyWasFound ? styles.badgeNegative : styles.badgePositive
-              ]}>
-                <View style={{flexDirection: 'row-reverse', alignItems: 'center'}}>
-                  {result.spyWasFound ? (
-                    <Ionicons name="close-circle" size={16} color="#fff" style={{marginLeft: 4}} />
-                  ) : (
-                    <Ionicons name="checkmark-circle" size={16} color="#fff" style={{marginLeft: 4}} />
-                  )}
-                  <Text style={styles.badgeText}>
-                    {result.spyWasFound ? 'دۆزرایەوە' : 'دەرباز بوو'}
-                  </Text>
+          <Animated.View
+            style={{
+              opacity: spyCardAnim,
+              transform: [
+                { 
+                  scale: spyCardAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.8, 1],
+                  })
+                },
+                {
+                  translateY: spyCardAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [20, 0],
+                  })
+                }
+              ],
+            }}
+          >
+            <GlassCard style={styles.spyInfoCard}>
+              <View style={styles.spyHeader}>
+                <Image source={require('../../assets/spy-icon.png')} style={{width: 40, height: 40, marginRight: 12}} resizeMode="contain" />
+                <View style={styles.spyDetails}>
+                  <Text style={styles.spyLabel}>سیخوڕ</Text>
+                  <Text style={styles.spyName}>{result.spyName}</Text>
                 </View>
               </View>
-              <View style={[
-                styles.resultBadge,
-                result.spyGuessedCorrectly ? styles.badgePositive : styles.badgeNegative
-              ]}>
-                <View style={{flexDirection: 'row-reverse', alignItems: 'center'}}>
-                  {result.spyGuessedCorrectly ? (
-                    <Ionicons name="checkmark-circle" size={16} color="#fff" style={{marginLeft: 4}} />
-                  ) : (
-                    <Ionicons name="close-circle" size={16} color="#fff" style={{marginLeft: 4}} />
-                  )}
-                  <Text style={styles.badgeText}>
-                    {result.spyGuessedCorrectly ? 'وشەکەی دۆزیەوە' : 'نەیتوانی بدۆزێتەوە'}
-                  </Text>
-                </View>
+              
+              <View style={styles.spyResults}>
+                <Animated.View 
+                  style={[
+                    styles.resultBadge,
+                    result.spyWasFound ? styles.badgeNegative : styles.badgePositive,
+                    { transform: [{ scale: bounceInterpolation }] }
+                  ]}
+                >
+                  <View style={{flexDirection: 'row-reverse', alignItems: 'center'}}>
+                    {result.spyWasFound ? (
+                      <Ionicons name="close-circle" size={16} color="#fff" style={{marginLeft: 4}} />
+                    ) : (
+                      <Ionicons name="checkmark-circle" size={16} color="#fff" style={{marginLeft: 4}} />
+                    )}
+                    <Text style={styles.badgeText}>
+                      {result.spyWasFound ? 'دۆزرایەوە' : 'دەرباز بوو'}
+                    </Text>
+                  </View>
+                </Animated.View>
+                <Animated.View 
+                  style={[
+                    styles.resultBadge,
+                    result.spyGuessedCorrectly ? styles.badgePositive : styles.badgeNegative,
+                    { transform: [{ scale: bounceInterpolation }] }
+                  ]}
+                >
+                  <View style={{flexDirection: 'row-reverse', alignItems: 'center'}}>
+                    {result.spyGuessedCorrectly ? (
+                      <Ionicons name="checkmark-circle" size={16} color="#fff" style={{marginLeft: 4}} />
+                    ) : (
+                      <Ionicons name="close-circle" size={16} color="#fff" style={{marginLeft: 4}} />
+                    )}
+                    <Text style={styles.badgeText}>
+                      {result.spyGuessedCorrectly ? 'وشەکەی دۆزیەوە' : 'نەیتوانی بدۆزێتەوە'}
+                    </Text>
+                  </View>
+                </Animated.View>
               </View>
-            </View>
-          </GlassCard>
+            </GlassCard>
+          </Animated.View>
 
           {/* Points This Round */}
           {result.pointsAwarded.length > 0 && (
-            <>
+            <Animated.View
+              style={{
+                opacity: pointsAnim,
+                transform: [
+                  {
+                    translateX: pointsAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-30, 0],
+                    })
+                  }
+                ],
+              }}
+            >
               <Text style={styles.sectionTitle}>خاڵەکانی ئەم گەڕە</Text>
               <GlassCard style={styles.pointsCard}>
                 {result.pointsAwarded.map((award, index) => {
                   const player = gameState.players.find(p => p.id === award.playerId);
                   return (
-                    <View key={index} style={styles.pointRow}>
+                    <Animated.View 
+                      key={index} 
+                      style={[
+                        styles.pointRow,
+                        {
+                          opacity: pointsAnim,
+                          transform: [{
+                            translateX: pointsAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [50 * (index + 1), 0],
+                            })
+                          }],
+                        }
+                      ]}
+                    >
                       <Text style={styles.pointPlayerName}>{player?.name}</Text>
-                      <View style={styles.pointBadge}>
+                      <Animated.View style={[
+                        styles.pointBadge,
+                        { transform: [{ scale: bounceInterpolation }] }
+                      ]}>
                         <Text style={styles.pointValue}>+{award.points}</Text>
-                      </View>
-                    </View>
+                      </Animated.View>
+                    </Animated.View>
                   );
                 })}
               </GlassCard>
-            </>
+            </Animated.View>
           )}
 
           {/* Leaderboard */}
-          <Text style={styles.sectionTitle}>خشتەی خاڵەکان</Text>
-          {sortedPlayers.map((player, index) => (
-            <PlayerCard
-              key={player.id}
-              name={player.name}
-              score={getPlayerScore(player.id)}
-              index={index}
-              isSpy={player.id === result.spyId}
-              revealed={true}
-              showScore={true}
-            />
-          ))}
+          <Animated.View
+            style={{
+              opacity: pointsAnim,
+            }}
+          >
+            <Text style={styles.sectionTitle}>خشتەی خاڵەکان</Text>
+          </Animated.View>
+          
+          {sortedPlayers.map((player, index) => {
+            const cardAnim = playerCardAnims[index] || new Animated.Value(1);
+            
+            return (
+              <Animated.View
+                key={player.id}
+                style={{
+                  opacity: cardAnim,
+                  transform: [
+                    {
+                      translateX: cardAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-50, 0],
+                      })
+                    },
+                    {
+                      scale: cardAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.9, 1],
+                      })
+                    }
+                  ],
+                }}
+              >
+                <PlayerCard
+                  name={player.name}
+                  score={getPlayerScore(player.id)}
+                  index={index}
+                  isSpy={player.id === result.spyId}
+                  revealed={true}
+                  showScore={true}
+                />
+              </Animated.View>
+            );
+          })}
         </ScrollView>
 
         {/* Footer */}
-        <View style={styles.footer}>
+        <Animated.View 
+          style={[
+            styles.footer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim.interpolate({
+                inputRange: [0, 30],
+                outputRange: [0, 30],
+              })}],
+            }
+          ]}
+        >
           <GlassButton
             title={isLastRound ? "ئەنجامی کۆتایی" : `گەڕی ${gameState.currentRound + 1}`}
             icon={isLastRound ? <Ionicons name="trophy" size={22} color="#fff" /> : <Ionicons name="play" size={22} color="#fff" />}
@@ -176,7 +400,7 @@ const RoundResultScreen: React.FC = () => {
             size="large"
             fullWidth
           />
-        </View>
+        </Animated.View>
       </View>
     </GradientBackground>
   );

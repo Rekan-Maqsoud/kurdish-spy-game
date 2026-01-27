@@ -47,6 +47,7 @@ export interface GameSettings {
   spyGuessOptions: number; // number of word options for spy
   pointsForFindingSpy: number;
   pointsForSpyGuessing: number;
+  pointsForSpyEscape: number; // points spy gets for not being found
 }
 
 export interface GameState {
@@ -78,15 +79,36 @@ export interface RoundResult {
   spyId: string;
   spyName: string;
   spyWasFound: boolean;
+  spyEscaped: boolean; // true if spy wasn't caught by majority
   spyGuessedCorrectly: boolean;
   votes: { playerId: string; votedForId: string }[];
   pointsAwarded: { playerId: string; points: number }[];
 }
 
+// Per-match player stats snapshot (stored locally per game)
+export interface GamePlayerStats {
+  pointsEarned: number;
+  roundsPlayed: number;
+  roundsWon: number;
+  roundsLost: number;
+  timesAsSpy: number;
+  timesEscapedAsSpy: number;
+  timesCorrectlyGuessedWord: number;
+  timesCaughtSpy: number;
+  timesSpyWasCaught: number;
+}
+
+export interface SavedGamePlayer {
+  name: string;
+  score: number;
+  isWinner: boolean;
+  stats?: GamePlayerStats;
+}
+
 export interface SavedGame {
   id: string;
   date: string;
-  players: { name: string; score: number }[];
+  players: SavedGamePlayer[];
   rounds: number;
   winner: string;
 }
@@ -102,8 +124,16 @@ export interface HighScore {
 export interface PlayerStats {
   name: string;
   totalPoints: number;
-  gamesPlayed: number;
-  gamesWon: number;
+  gamesPlayed: number;        // Total games played
+  gamesWon: number;           // Games where this player won (highest score)
+  roundsPlayed: number;       // Total rounds played
+  roundsWon: number;          // Rounds where player scored points
+  roundsLost: number;         // Rounds where player got 0 points
+  timesAsSpy: number;         // How many times was spy
+  timesEscapedAsSpy: number;  // How many times escaped as spy (not caught)
+  timesCorrectlyGuessedWord: number; // As spy, guessed the word correctly
+  timesCaughtSpy: number;     // As non-spy, correctly voted for spy
+  timesSpyWasCaught: number;  // As spy, got caught
   lastPlayed: string;
 }
 

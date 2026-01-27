@@ -53,9 +53,14 @@ const GradientBackground: React.FC<GradientBackgroundProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    width: '100%',
+    minHeight: '100%',
+    overflow: 'hidden',
   },
   content: {
     flex: 1,
+    width: '100%',
+    minHeight: '100%',
     paddingTop: StatusBar.currentHeight || 0,
   },
   circle: {

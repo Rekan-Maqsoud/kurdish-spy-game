@@ -24,6 +24,7 @@ const SettingsScreen: React.FC = () => {
   const [spyGuessOptions, setSpyGuessOptions] = useState(settings.spyGuessOptions);
   const [pointsForFindingSpy, setPointsForFindingSpy] = useState(settings.pointsForFindingSpy);
   const [pointsForSpyGuessing, setPointsForSpyGuessing] = useState(settings.pointsForSpyGuessing);
+  const [pointsForSpyEscape, setPointsForSpyEscape] = useState(settings.pointsForSpyEscape || 1);
   const [selectedCategories, setSelectedCategories] = useState<CategoryId[]>(settings.selectedCategories);
 
   const toggleCategory = (categoryId: CategoryId) => {
@@ -48,6 +49,7 @@ const SettingsScreen: React.FC = () => {
       spyGuessOptions,
       pointsForFindingSpy,
       pointsForSpyGuessing,
+      pointsForSpyEscape,
       selectedCategories,
     });
     navigation.goBack();
@@ -147,6 +149,17 @@ const SettingsScreen: React.FC = () => {
               value={pointsForSpyGuessing}
               onIncrease={() => setPointsForSpyGuessing(n => n + 1)}
               onDecrease={() => setPointsForSpyGuessing(n => n - 1)}
+              min={1}
+              max={5}
+            />
+            
+            <View style={styles.divider} />
+            
+            <NumberSelector
+              label="خاڵ بۆ دەربازبوونی سیخوڕ"
+              value={pointsForSpyEscape}
+              onIncrease={() => setPointsForSpyEscape(n => n + 1)}
+              onDecrease={() => setPointsForSpyEscape(n => n - 1)}
               min={1}
               max={5}
             />
