@@ -16,9 +16,8 @@ import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-ico
 import { GradientBackground, GlassCard, GlassButton } from '../components';
 import Colors from '../constants/colors';
 import Typography from '../constants/typography';
-import { loadPlayerStats } from '../utils/storage';
+import { loadPlayerStats, clearPlayerStats } from '../utils/storage';
 import { PlayerStats, RootStackParamList } from '../types';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -107,8 +106,12 @@ const HighScoresScreen: React.FC = () => {
           text: 'بەڵێ',
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.removeItem('@spy_game_player_stats');
+            setLoading(true);
+            await clearPlayerStats();
             setPlayerStats([]);
+            setSelectedPlayer(null);
+            setShowModal(false);
+            setLoading(false);
           },
         },
       ]
@@ -116,7 +119,11 @@ const HighScoresScreen: React.FC = () => {
   };
 
   const handleGoBack = () => {
-    navigation.goBack();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Home');
+    }
   };
 
   const openPlayerDetails = (player: PlayerStats) => {
@@ -378,6 +385,7 @@ const HighScoresScreen: React.FC = () => {
             <Ionicons name="arrow-forward" size={28} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.title}>تۆماری یاریزانەکان</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
         {loading ? (
@@ -650,18 +658,21 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 20,
     marginTop: 10,
   },
   backButton: {
     padding: 10,
-    marginLeft: -10,
   },
   title: {
     ...Typography.h2,
     flex: 1,
     textAlign: 'center',
-    marginRight: -40,
+    marginHorizontal: 8,
+  },
+  headerSpacer: {
+    width: 48,
   },
   loadingContainer: {
     flex: 1,

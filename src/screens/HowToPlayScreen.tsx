@@ -9,6 +9,14 @@ import Typography from '../constants/typography';
 const HowToPlayScreen: React.FC = () => {
   const navigation = useNavigation();
 
+  const handleGoBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Home' as never);
+    }
+  };
+
   const steps = [
     {
       number: '١',
@@ -80,10 +88,11 @@ const HowToPlayScreen: React.FC = () => {
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
             <Ionicons name="arrow-forward" size={28} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.title}>چۆنیەتی یاریکردن</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
         <ScrollView 
@@ -150,6 +159,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 20,
     marginTop: 10,
   },
@@ -164,7 +174,10 @@ const styles = StyleSheet.create({
     ...Typography.h2,
     flex: 1,
     textAlign: 'center',
-    marginRight: -40,
+    marginHorizontal: 8,
+  },
+  headerSpacer: {
+    width: 48,
   },
   scrollView: {
     flex: 1,

@@ -78,6 +78,15 @@ export const clearHighScores = async (): Promise<void> => {
   }
 };
 
+// Player Stats - Clear leaderboard
+export const clearPlayerStats = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEYS.PLAYER_STATS);
+  } catch (error) {
+    console.error('Error clearing player stats:', error);
+  }
+};
+
 // Saved Games
 export const saveGame = async (game: SavedGame): Promise<void> => {
   try {

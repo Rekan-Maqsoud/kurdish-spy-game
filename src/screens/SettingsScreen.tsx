@@ -54,7 +54,11 @@ const SettingsScreen: React.FC = () => {
       pointsForSpyEscape,
       selectedCategories,
     });
-    navigation.goBack();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Home' as never);
+    }
   };
 
   const NumberSelector = ({
@@ -103,6 +107,7 @@ const SettingsScreen: React.FC = () => {
             <Ionicons name="arrow-forward" size={28} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.title}>ڕێکخستنەکان</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
         <ScrollView 
@@ -228,6 +233,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 20,
     marginTop: 10,
   },
@@ -242,7 +248,10 @@ const styles = StyleSheet.create({
     ...Typography.h2,
     flex: 1,
     textAlign: 'center',
-    marginRight: -40,
+    marginHorizontal: 8,
+  },
+  headerSpacer: {
+    width: 48,
   },
   scrollView: {
     flex: 1,
