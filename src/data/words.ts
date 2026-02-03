@@ -285,6 +285,11 @@ export const getTotalWordCount = (): number => {
   return categories.reduce((total, category) => total + category.words.length, 0);
 };
 
+// Get total category count
+export const getTotalCategoryCount = (): number => {
+  return categories.length;
+};
+
 // Get words from selected categories
 export const getWordsFromCategories = (categoryIds: CategoryId[]): string[] => {
   return categories

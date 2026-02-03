@@ -7,7 +7,7 @@ import { RootStackParamList } from '../types';
 import { GradientBackground, GlassButton, GlassCard } from '../components';
 import Colors from '../constants/colors';
 import Typography from '../constants/typography';
-import { getTotalWordCount } from '../data/words';
+import { getTotalCategoryCount, getTotalWordCount } from '../data/words';
 
 const { width } = Dimensions.get('window');
 
@@ -39,7 +39,7 @@ const HomeScreen: React.FC = () => {
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>20</Text>
+                <Text style={styles.statNumber}>{getTotalCategoryCount()}</Text>
                 <Text style={styles.statLabel}>پۆل</Text>
               </View>
               <View style={styles.statDivider} />

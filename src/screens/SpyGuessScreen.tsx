@@ -43,20 +43,7 @@ const SpyGuessScreen: React.FC = () => {
   };
 
   const proceedToResults = () => {
-    const result = calculateRoundResults();
-    
-    // Add spy guess result
-    const finalResult: RoundResult = {
-      ...result,
-      spyGuessedCorrectly: guessedCorrectly,
-      pointsAwarded: guessedCorrectly && !result.spyWasFound
-        ? [
-            ...result.pointsAwarded,
-            ...spies.map(spy => ({ playerId: spy.id, points: settings.pointsForSpyGuessing })),
-          ]
-        : result.pointsAwarded,
-    };
-    
+    const finalResult = calculateRoundResults(guessedCorrectly);
     navigation.navigate('RoundResult', { result: finalResult });
   };
 

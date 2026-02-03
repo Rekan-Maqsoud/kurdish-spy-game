@@ -16,7 +16,7 @@ interface GameContextType {
   submitVote: (voterId: string, suspectId: string) => void;
   submitSpyGuess: (word: string) => boolean;
   skipSpyGuess: () => void;
-  calculateRoundResults: () => RoundResult;
+  calculateRoundResults: (spyGuessedCorrectly?: boolean) => RoundResult;
   updateSettings: (newSettings: Partial<GameSettings>) => void;
   resetGame: () => void;
   proceedToNextPhase: () => void;
@@ -463,16 +463,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     });
     
-    // IMPROVEMENT 2: Spy gets escape points if they weren't found (independent of guessing)
-    if (spyEscaped) {
-      const escapePoints = state.settings.pointsForSpyEscape || 1;
-      spies.forEach(spy => {
-        if (!caughtSpyIds.includes(spy.id)) {
-          allScoreUpdates.push({ playerId: spy.id, points: escapePoints });
-          pointsAwarded.push({ playerId: spy.id, points: escapePoints });
-        }
-      });
-    }
+    // Spy gets escape points if they weren't caught (independent of guessing)
+    const escapePoints = state.settings.pointsForSpyEscape || 1;
+    spies.forEach(spy => {
+      if (!caughtSpyIds.includes(spy.id)) {
+        allScoreUpdates.push({ playerId: spy.id, points: escapePoints });
+        pointsAwarded.push({ playerId: spy.id, points: escapePoints });
+      }
+    });
     
     // IMPROVEMENT 2: Spy gets guessing points if they guessed correctly (independent of escape)
     if (correct) {
@@ -559,16 +557,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     });
     
-    // IMPROVEMENT 2: Spy gets escape points if they weren't found
-    if (spyEscaped) {
-      const escapePoints = state.settings.pointsForSpyEscape || 1;
-      spies.forEach(spy => {
-        if (!caughtSpyIds.includes(spy.id)) {
-          allScoreUpdates.push({ playerId: spy.id, points: escapePoints });
-          pointsAwarded.push({ playerId: spy.id, points: escapePoints });
-        }
-      });
-    }
+    // Spy gets escape points if they weren't caught
+    const escapePoints = state.settings.pointsForSpyEscape || 1;
+    spies.forEach(spy => {
+      if (!caughtSpyIds.includes(spy.id)) {
+        allScoreUpdates.push({ playerId: spy.id, points: escapePoints });
+        pointsAwarded.push({ playerId: spy.id, points: escapePoints });
+      }
+    });
     
     // Apply all score updates
     if (allScoreUpdates.length > 0) {
@@ -621,7 +617,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
 
-  const calculateRoundResults = (): RoundResult => {
+  const calculateRoundResults = (spyGuessedCorrectly = false): RoundResult => {
     if (!state.gameState) {
       throw new Error('No game state');
     }
@@ -647,6 +643,19 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     });
 
+    const escapePoints = state.settings.pointsForSpyEscape || 1;
+    spies.forEach(spy => {
+      if (!caughtSpyIds.includes(spy.id)) {
+        pointsAwarded.push({ playerId: spy.id, points: escapePoints });
+      }
+    });
+
+    if (spyGuessedCorrectly) {
+      spies.forEach(spy => {
+        pointsAwarded.push({ playerId: spy.id, points: state.settings.pointsForSpyGuessing });
+      });
+    }
+
     const result: RoundResult = {
       round: currentRound,
       word: currentWord,
@@ -656,7 +665,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       caughtSpyIds,
       spyWasFound,
       spyEscaped,
-      spyGuessedCorrectly: false, // Will be updated in spy guess phase
+      spyGuessedCorrectly: spyGuessedCorrectly,
       votes,
       pointsAwarded,
     };

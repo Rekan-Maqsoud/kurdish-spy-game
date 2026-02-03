@@ -16,6 +16,7 @@ const DiscussionScreen: React.FC = () => {
   const navigation = useNavigation<DiscussionNavigationProp>();
   const { gameState, settings } = useGame();
   const [timer, setTimer] = useState<number | null>(null);
+  const [showCategoryHint, setShowCategoryHint] = useState(true);
 
   useEffect(() => {
     if (settings.timePerRound > 0) {
@@ -79,11 +80,31 @@ const DiscussionScreen: React.FC = () => {
         {/* Category Info */}
         <GlassCard style={styles.categoryCard}>
           <View style={styles.categoryContent}>
-            <Ionicons name={(category?.icon || 'help-circle') as any} size={32} color="#fff" />
-            <View style={styles.categoryInfo}>
-              <Text style={styles.categoryLabel}>پۆلی ئەم گەڕەیە</Text>
-              <Text style={styles.categoryName}>{category?.name}</Text>
-            </View>
+            {showCategoryHint ? (
+              <>
+                <Ionicons name={(category?.icon || 'help-circle') as any} size={32} color="#fff" />
+                <View style={styles.categoryInfo}>
+                  <Text style={styles.categoryLabel}>پۆلی ئەم گەڕەیە</Text>
+                  <Text style={styles.categoryName}>{category?.name}</Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.categoryHiddenContent}>
+                <Ionicons name="help-circle" size={28} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.categoryHiddenText}>پۆل شاراوەیە</Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              onPress={() => setShowCategoryHint(prev => !prev)}
+              style={styles.categoryToggle}
+              activeOpacity={0.7}
+            >
+              <Ionicons name={showCategoryHint ? 'eye-off' : 'eye'} size={18} color="#fff" />
+              <Text style={styles.categoryToggleText}>
+                {showCategoryHint ? 'بشارەوە' : 'نیشان بدە'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </GlassCard>
 
@@ -180,6 +201,16 @@ const styles = StyleSheet.create({
   categoryContent: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  categoryHiddenContent: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+  },
+  categoryHiddenText: {
+    ...Typography.body,
+    color: Colors.text.muted,
   },
   categoryIcon: {
     fontSize: 40,
@@ -188,6 +219,22 @@ const styles = StyleSheet.create({
   categoryInfo: {
     flex: 1,
     alignItems: 'flex-end',
+  },
+  categoryToggle: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: Colors.glass.border,
+    marginLeft: 10,
+  },
+  categoryToggleText: {
+    ...Typography.caption,
+    color: '#fff',
   },
   categoryLabel: {
     ...Typography.caption,
