@@ -16,7 +16,7 @@ const DiscussionScreen: React.FC = () => {
   const navigation = useNavigation<DiscussionNavigationProp>();
   const { gameState, settings, changeCurrentWord, resetGame, addPlayerToGame } = useGame();
   const [timer, setTimer] = useState<number | null>(null);
-  const [showCategoryHint, setShowCategoryHint] = useState(true);
+  const [showCategoryHint, setShowCategoryHint] = useState(settings.showCategoryHint);
 
   useEffect(() => {
     if (settings.timePerRound > 0) {
@@ -55,6 +55,22 @@ const DiscussionScreen: React.FC = () => {
 
   const proceedToVoting = () => {
     navigation.navigate('Voting');
+  };
+
+  const getPrimaryActionLabel = () => {
+    if (!settings.enableVoting && !settings.enableSpyGuess) return 'پیشاندانی ئەنجام';
+    if (!settings.enableVoting && settings.enableSpyGuess) return 'تەخمینی سیخوڕ';
+    return 'دەستپێکردنی دەنگدان';
+  };
+
+  const getPrimaryActionIcon = () => {
+    if (!settings.enableVoting && !settings.enableSpyGuess) {
+      return <Ionicons name="stats-chart" size={22} color="#fff" />;
+    }
+    if (!settings.enableVoting && settings.enableSpyGuess) {
+      return <Ionicons name="eye" size={22} color="#fff" />;
+    }
+    return <MaterialCommunityIcons name="vote" size={22} color="#fff" />;
   };
 
   const handleGoHome = () => {
@@ -182,8 +198,8 @@ const DiscussionScreen: React.FC = () => {
         {/* Footer */}
         <View style={styles.footer}>
           <GlassButton
-            title="دەستپێکردنی دەنگدان"
-            icon={<MaterialCommunityIcons name="vote" size={22} color="#fff" />}
+            title={getPrimaryActionLabel()}
+            icon={getPrimaryActionIcon()}
             onPress={proceedToVoting}
             variant="primary"
             size="large"

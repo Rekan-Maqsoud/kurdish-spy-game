@@ -27,6 +27,10 @@ const SettingsScreen: React.FC = () => {
   const [pointsForSpyGuessing, setPointsForSpyGuessing] = useState(settings.pointsForSpyGuessing);
   const [pointsForSpyEscape, setPointsForSpyEscape] = useState(settings.pointsForSpyEscape || 1);
   const [selectedCategories, setSelectedCategories] = useState<CategoryId[]>(settings.selectedCategories);
+  const [timePerRound, setTimePerRound] = useState(settings.timePerRound);
+  const [showCategoryHint, setShowCategoryHint] = useState(settings.showCategoryHint);
+  const [enableVoting, setEnableVoting] = useState(settings.enableVoting);
+  const [enableSpyGuess, setEnableSpyGuess] = useState(settings.enableSpyGuess);
 
   const toggleCategory = (categoryId: CategoryId) => {
     if (selectedCategories.includes(categoryId)) {
@@ -47,12 +51,16 @@ const SettingsScreen: React.FC = () => {
   const saveAndGoBack = () => {
     updateSettings({
       numberOfRounds,
+      timePerRound,
       spyGuessOptions,
       numberOfSpies,
       pointsForFindingSpy,
       pointsForSpyGuessing,
       pointsForSpyEscape,
       selectedCategories,
+      showCategoryHint,
+      enableVoting,
+      enableSpyGuess,
     });
     if (navigation.canGoBack()) {
       navigation.goBack();
@@ -98,6 +106,32 @@ const SettingsScreen: React.FC = () => {
     </View>
   );
 
+  const ToggleRow = ({
+    label,
+    value,
+    onToggle,
+  }: {
+    label: string;
+    value: boolean;
+    onToggle: () => void;
+  }) => (
+    <View style={styles.toggleRow}>
+      <Text style={styles.toggleLabel}>{label}</Text>
+      <TouchableOpacity
+        onPress={onToggle}
+        style={[styles.togglePill, value ? styles.toggleOn : styles.toggleOff]}
+      >
+        <View style={[styles.toggleDot, value ? styles.toggleDotOn : styles.toggleDotOff]} />
+      </TouchableOpacity>
+    </View>
+  );
+
+  const formatTimeLabel = (seconds: number) => {
+    if (seconds === 0) return 'بێ سنوور';
+    const mins = Math.floor(seconds / 60);
+    return `${mins} خولەک`;
+  };
+
   return (
     <GradientBackground>
       <View style={styles.container}>
@@ -128,6 +162,43 @@ const SettingsScreen: React.FC = () => {
             />
             
             <View style={styles.divider} />
+
+            <View style={styles.timeRow}>
+              <Text style={styles.selectorLabel}>کاتی گفتوگۆ</Text>
+              <View style={styles.timeControls}>
+                <TouchableOpacity
+                  onPress={() => setTimePerRound(t => Math.max(0, t - 60))}
+                  style={[styles.selectorButton, timePerRound <= 0 && styles.selectorButtonDisabled]}
+                  disabled={timePerRound <= 0}
+                >
+                  <Text style={styles.selectorButtonText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.selectorValue}>{formatTimeLabel(timePerRound)}</Text>
+                <TouchableOpacity
+                  onPress={() => setTimePerRound(t => Math.min(900, t + 60))}
+                  style={[styles.selectorButton, timePerRound >= 900 && styles.selectorButtonDisabled]}
+                  disabled={timePerRound >= 900}
+                >
+                  <Text style={styles.selectorButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.quickTimes}>
+              {[0, 120, 180, 300, 480, 600].map(value => (
+                <TouchableOpacity
+                  key={value}
+                  onPress={() => setTimePerRound(value)}
+                  style={[styles.quickChip, timePerRound === value && styles.quickChipActive]}
+                >
+                  <Text style={[styles.quickChipText, timePerRound === value && styles.quickChipTextActive]}>
+                    {value === 0 ? 'بێ سنوور' : `${value / 60} خ`}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.divider} />
             
             <NumberSelector
               label="ژمارەی هەڵبژاردنەکانی سیخوڕ"
@@ -149,6 +220,30 @@ const SettingsScreen: React.FC = () => {
               max={5}
             />
             
+            <View style={styles.divider} />
+
+            <ToggleRow
+              label="پیشاندانی پۆل"
+              value={showCategoryHint}
+              onToggle={() => setShowCategoryHint(v => !v)}
+            />
+
+            <View style={styles.divider} />
+
+            <ToggleRow
+              label="دەنگدان چالاک"
+              value={enableVoting}
+              onToggle={() => setEnableVoting(v => !v)}
+            />
+
+            <View style={styles.divider} />
+
+            <ToggleRow
+              label="تەخمینی سیخوڕ چالاک"
+              value={enableSpyGuess}
+              onToggle={() => setEnableSpyGuess(v => !v)}
+            />
+
             <View style={styles.divider} />
             
             <NumberSelector
@@ -257,38 +352,40 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 16,
   },
   sectionTitle: {
-    ...Typography.h3,
+    ...Typography.h4,
     textAlign: 'right',
-    marginBottom: 16,
+    marginBottom: 8,
     marginTop: 10,
     color: Colors.accent.gold,
   },
   settingsCard: {
-    marginBottom: 20,
+    marginBottom: 16,
+    paddingVertical: 6,
   },
   selectorRow: {
     flexDirection: 'row-reverse',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   selectorLabel: {
     ...Typography.body,
     flex: 1,
     textAlign: 'right',
     writingDirection: 'rtl',
+    fontSize: 14,
   },
   selectorControls: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
   },
   selectorButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: Colors.primary.start,
     justifyContent: 'center',
     alignItems: 'center',
@@ -297,19 +394,94 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(100, 100, 100, 0.3)',
   },
   selectorButtonText: {
-    fontSize: 24,
+    fontSize: 20,
     color: '#fff',
     fontWeight: 'bold',
   },
   selectorValue: {
-    ...Typography.h3,
-    minWidth: 50,
+    ...Typography.h4,
+    minWidth: 52,
     textAlign: 'center',
   },
   divider: {
     height: 1,
     backgroundColor: Colors.glass.border,
-    marginVertical: 12,
+    marginVertical: 8,
+  },
+  timeRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  timeControls: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+  },
+  quickTimes: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
+  },
+  quickChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.glass.border,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  quickChipActive: {
+    backgroundColor: Colors.primary.start,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  quickChipText: {
+    ...Typography.caption,
+    color: Colors.text.secondary,
+  },
+  quickChipTextActive: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  toggleRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  toggleLabel: {
+    ...Typography.body,
+    fontSize: 14,
+    textAlign: 'right',
+  },
+  togglePill: {
+    width: 52,
+    height: 28,
+    borderRadius: 14,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: Colors.glass.border,
+    justifyContent: 'center',
+  },
+  toggleOn: {
+    backgroundColor: Colors.primary.start,
+  },
+  toggleOff: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  toggleDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+  },
+  toggleDotOn: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#fff',
+  },
+  toggleDotOff: {
+    alignSelf: 'flex-end',
+    backgroundColor: 'rgba(255,255,255,0.6)',
   },
   categoriesHeader: {
     flexDirection: 'row-reverse',

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, Image, Dimensions, Modal, TextInput, Alert, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, Image, Dimensions, Modal, Alert, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../types';
-import { GradientBackground, GlassButton, GlassCard } from '../components';
+import { GradientBackground, GlassButton, GlassCard, GlassInput } from '../components';
 import Colors from '../constants/colors';
 import Typography from '../constants/typography';
 import { getTotalCategoryCount, getTotalWordCount } from '../data/words';
@@ -207,32 +207,29 @@ const HomeScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
 
-              <TextInput
-                style={styles.suggestionInput}
-                placeholder="ناو (ئارەزووی)"
-                placeholderTextColor="rgba(255,255,255,0.5)"
+              <GlassInput
                 value={suggestionName}
                 onChangeText={setSuggestionName}
+                placeholder="ناو (ئارەزووی)"
                 autoCapitalize="words"
+                style={styles.suggestionInput}
                 textAlign="right"
               />
-              <TextInput
-                style={styles.suggestionInput}
-                placeholder="ژمارە یان ئیمەیڵ (ئارەزووی)"
-                placeholderTextColor="rgba(255,255,255,0.5)"
+              <GlassInput
                 value={suggestionContact}
                 onChangeText={setSuggestionContact}
+                placeholder="ژمارە یان ئیمەیڵ (ئارەزووی)"
                 autoCapitalize="none"
+                style={styles.suggestionInput}
                 textAlign="right"
               />
-              <TextInput
-                style={[styles.suggestionInput, styles.suggestionMessage]}
-                placeholder="پێشنیارەکەت بنووسە"
-                placeholderTextColor="rgba(255,255,255,0.5)"
+              <GlassInput
                 value={suggestionMessage}
                 onChangeText={setSuggestionMessage}
+                placeholder="پێشنیارەکەت بنووسە"
+                autoCapitalize="sentences"
+                style={[styles.suggestionInput, styles.suggestionMessage]}
                 textAlign="right"
-                multiline
               />
 
               <View style={styles.suggestionActions}>
@@ -350,19 +347,10 @@ const styles = StyleSheet.create({
     ...Typography.h3,
   },
   suggestionInput: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#fff',
     marginBottom: 10,
-    writingDirection: 'rtl',
   },
   suggestionMessage: {
     minHeight: 110,
-    textAlignVertical: 'top',
   },
   suggestionActions: {
     marginTop: 6,

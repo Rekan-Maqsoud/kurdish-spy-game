@@ -20,6 +20,9 @@ export const DEFAULT_SETTINGS: GameSettings = {
   pointsForFindingSpy: 1,
   pointsForSpyGuessing: 2,
   pointsForSpyEscape: 1, // points spy gets for not being found
+  showCategoryHint: true,
+  enableVoting: true,
+  enableSpyGuess: true,
 };
 
 // Settings

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, ScrollView, Alert, Image, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -17,6 +17,7 @@ const VotingScreen: React.FC = () => {
   const navigation = useNavigation<VotingNavigationProp>();
   const {
     gameState,
+    settings,
     submitVote,
     startNewRound,
     submitSpyGuess,
@@ -28,9 +29,13 @@ const VotingScreen: React.FC = () => {
   
   const [currentVoterIndex, setCurrentVoterIndex] = useState(0);
   const [selectedSuspect, setSelectedSuspect] = useState<string | null>(null);
-  const [phase, setPhase] = useState<Phase>('voting');
+  const initialPhase: Phase = !settings.enableVoting
+    ? (settings.enableSpyGuess ? 'spyGuess' : 'results')
+    : 'voting';
+  const [phase, setPhase] = useState<Phase>(initialPhase);
   const [selectedGuessWord, setSelectedGuessWord] = useState<string | null>(null);
   const [spyGuessedCorrectly, setSpyGuessedCorrectly] = useState(false);
+  const skipAppliedRef = useRef(false);
 
   const currentVoter = gameState?.players[currentVoterIndex];
   const hasEveryoneVoted = gameState?.players.every(p => p.hasVoted) ?? false;
@@ -38,10 +43,26 @@ const VotingScreen: React.FC = () => {
   useEffect(() => {
     console.log('[VotingScreen] useEffect - hasEveryoneVoted:', hasEveryoneVoted, 'phase:', phase);
     if (hasEveryoneVoted && phase === 'voting') {
+      if (!settings.enableSpyGuess) {
+        console.log('[VotingScreen] Spy guess disabled, skipping to results');
+        if (!skipAppliedRef.current) {
+          skipAppliedRef.current = true;
+          skipSpyGuess();
+        }
+        setPhase('results');
+        return;
+      }
       console.log('[VotingScreen] Everyone voted, moving to spy guess phase');
       setPhase('spyGuess');
     }
-  }, [hasEveryoneVoted, phase]);
+  }, [hasEveryoneVoted, phase, settings.enableSpyGuess, skipSpyGuess]);
+
+  useEffect(() => {
+    if (!settings.enableVoting && !settings.enableSpyGuess && gameState && phase === 'results' && !skipAppliedRef.current) {
+      skipAppliedRef.current = true;
+      skipSpyGuess();
+    }
+  }, [settings.enableVoting, settings.enableSpyGuess, gameState, phase, skipSpyGuess]);
 
   useEffect(() => {
     if (!gameState) {
@@ -213,7 +234,7 @@ const VotingScreen: React.FC = () => {
           </GlassCard>
 
           <Text style={styles.sectionTitle}>وشەکە چییە؟</Text>
-          <ScrollView style={styles.guessScroll} showsVerticalScrollIndicator={false}>
+          <View style={styles.guessGrid}>
             {gameState.spyGuessOptions.map((word, index) => (
               <TouchableOpacity
                 key={index}
@@ -230,11 +251,11 @@ const VotingScreen: React.FC = () => {
                   {word}
                 </Text>
                 {selectedGuessWord === word && (
-                  <Ionicons name="checkmark-circle" size={24} color="#4ade80" />
+                  <Ionicons name="checkmark-circle" size={20} color="#4ade80" />
                 )}
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
 
           <View style={styles.footer}>
             <GlassButton
@@ -550,20 +571,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 10,
   },
-  guessScroll: {
-    flex: 1,
+  guessGrid: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 10,
   },
   guessOption: {
     backgroundColor: Colors.glass.background,
     borderWidth: 2,
     borderColor: Colors.glass.border,
     borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    marginBottom: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     flexDirection: 'row-reverse',
     justifyContent: 'space-between',
     alignItems: 'center',
+    width: '48%',
   },
   guessOptionSelected: {
     borderColor: '#4ade80',

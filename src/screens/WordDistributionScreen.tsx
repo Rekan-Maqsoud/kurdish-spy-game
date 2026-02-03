@@ -20,7 +20,7 @@ const WordDistributionScreen: React.FC = () => {
   const route = useRoute<WordDistributionRouteProp>();
   const { playerIndex } = route.params;
   
-  const { gameState, markPlayerAsSeenWord, changeCurrentWord, resetGame, addPlayerToGame } = useGame();
+  const { gameState, settings, markPlayerAsSeenWord, changeCurrentWord, resetGame, addPlayerToGame } = useGame();
   const [showWord, setShowWord] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -186,8 +186,8 @@ const WordDistributionScreen: React.FC = () => {
                 <SimpleWordDisplay
                   word={gameState.currentWord}
                   isSpy={isSpy}
-                  categoryName={category?.name}
-                  categoryIcon={category?.icon}
+                  categoryName={settings.showCategoryHint ? category?.name : undefined}
+                  categoryIcon={settings.showCategoryHint ? category?.icon : undefined}
                 />
               </GlassCard>
               

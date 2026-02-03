@@ -49,6 +49,9 @@ export interface GameSettings {
   pointsForFindingSpy: number;
   pointsForSpyGuessing: number;
   pointsForSpyEscape: number; // points spy gets for not being found
+  showCategoryHint: boolean;
+  enableVoting: boolean;
+  enableSpyGuess: boolean;
 }
 
 export interface GameState {

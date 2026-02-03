@@ -190,6 +190,9 @@ const styles = StyleSheet.create({
   },
   menuCard: {
     padding: 16,
+    backgroundColor: 'rgba(20, 20, 32, 0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   menuHeader: {
     flexDirection: 'row-reverse',
