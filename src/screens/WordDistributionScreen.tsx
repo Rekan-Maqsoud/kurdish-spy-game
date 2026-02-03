@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,8 +20,13 @@ const WordDistributionScreen: React.FC = () => {
   const route = useRoute<WordDistributionRouteProp>();
   const { playerIndex } = route.params;
   
-  const { gameState, markPlayerAsSeenWord } = useGame();
+  const { gameState, markPlayerAsSeenWord, changeCurrentWord, resetGame } = useGame();
   const [showWord, setShowWord] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [pendingHomeConfirm, setPendingHomeConfirm] = useState(false);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const homeConfirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!gameState) {
@@ -29,6 +34,17 @@ const WordDistributionScreen: React.FC = () => {
       navigation.navigate('Home');
     }
   }, [gameState, navigation]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+      if (homeConfirmTimerRef.current) {
+        clearTimeout(homeConfirmTimerRef.current);
+      }
+    };
+  }, []);
 
   if (!gameState) {
     return null;
@@ -59,6 +75,53 @@ const WordDistributionScreen: React.FC = () => {
     }
   };
 
+  const showToast = (message: string, duration = 2200) => {
+    setToastMessage(message);
+    setToastVisible(true);
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    toastTimerRef.current = setTimeout(() => {
+      setToastVisible(false);
+    }, duration);
+  };
+
+  const handleChangeWord = () => {
+    const changed = changeCurrentWord();
+    if (!changed) {
+      showToast('هیچ وشەیەک نەماوە');
+      return;
+    }
+
+    setShowWord(false);
+    if (playerIndex !== 0) {
+      navigation.navigate('WordDistribution', { playerIndex: 0 });
+    }
+    showToast('وشەکە گۆڕدرا');
+  };
+
+  const handleHomePress = () => {
+    if (pendingHomeConfirm) {
+      setPendingHomeConfirm(false);
+      if (homeConfirmTimerRef.current) {
+        clearTimeout(homeConfirmTimerRef.current);
+      }
+      resetGame();
+      navigation.navigate('Home');
+      showToast('گەڕایتەوە بۆ ماڵ');
+      return;
+    }
+
+    setPendingHomeConfirm(true);
+    showToast('دووبارە کلیک بکە بۆ گەڕانەوە بۆ ماڵ');
+    if (homeConfirmTimerRef.current) {
+      clearTimeout(homeConfirmTimerRef.current);
+    }
+    homeConfirmTimerRef.current = setTimeout(() => {
+      setPendingHomeConfirm(false);
+    }, 2500);
+  };
+
   return (
     <GradientBackground variant={isSpy && showWord ? 'spy' : 'game'}>
       <View style={styles.container}>
@@ -73,6 +136,22 @@ const WordDistributionScreen: React.FC = () => {
             <Text style={styles.progressText}>
               {playerIndex + 1} / {gameState.players.length}
             </Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={handleChangeWord}
+              style={styles.actionButton}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="shuffle" size={20} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleHomePress}
+              style={styles.actionButton}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="home" size={20} color="#fff" />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -128,6 +207,15 @@ const WordDistributionScreen: React.FC = () => {
             </View>
           )}
         </View>
+
+        {toastVisible && (
+          <View style={styles.toastContainer} pointerEvents="none">
+            <View style={styles.toast}>
+              <Ionicons name="information-circle" size={18} color="#fff" />
+              <Text style={styles.toastText}>{toastMessage}</Text>
+            </View>
+          </View>
+        )}
       </View>
     </GradientBackground>
   );
@@ -144,6 +232,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
     marginTop: 10,
+  },
+  headerActions: {
+    flexDirection: 'row-reverse',
+    gap: 10,
+    alignItems: 'center',
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.glass.background,
+    borderWidth: 1,
+    borderColor: Colors.glass.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   roundBadge: {
     backgroundColor: Colors.glass.background,
@@ -220,6 +323,29 @@ const styles = StyleSheet.create({
   },
   nextButton: {
     marginTop: 30,
+  },
+  toastContainer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+  },
+  toast: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(20, 20, 35, 0.9)',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  toastText: {
+    color: '#fff',
+    fontSize: 13,
+    textAlign: 'center',
   },
 });
 

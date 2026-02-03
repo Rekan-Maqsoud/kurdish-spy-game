@@ -11,6 +11,7 @@ interface GameContextType {
   roundResults: RoundResult[];
   initializeGame: (players: Player[]) => void;
   startNewRound: () => void;
+  changeCurrentWord: () => boolean;
   markPlayerAsSeenWord: (playerId: string) => void;
   submitVote: (voterId: string, suspectId: string) => void;
   submitSpyGuess: (word: string) => boolean;
@@ -37,6 +38,7 @@ type GameAction =
       }
     } }
   | { type: 'START_ROUND'; payload: { word: string; categoryId: CategoryId; spyIds: string[]; spyGuessOptions: string[] } }
+  | { type: 'CHANGE_WORD'; payload: { word: string; categoryId: CategoryId; spyGuessOptions: string[] } }
   | { type: 'MARK_SEEN_WORD'; payload: string }
   | { type: 'SUBMIT_VOTE'; payload: { voterId: string; suspectId: string } }
   | { type: 'SET_PHASE'; payload: GamePhase }
@@ -143,6 +145,26 @@ function gameReducer(state: State, action: GameAction): State {
             isSpy: action.payload.spyIds.includes(p.id),
             hasVoted: false,
             votedFor: null,
+            hasSeenWord: false,
+          })),
+        },
+      };
+
+    case 'CHANGE_WORD':
+      console.log('[GameReducer] CHANGE_WORD - word:', action.payload.word);
+      if (!state.gameState) return state;
+      return {
+        ...state,
+        gameState: {
+          ...state.gameState,
+          currentWord: action.payload.word,
+          currentCategory: action.payload.categoryId,
+          spyGuessOptions: action.payload.spyGuessOptions,
+          phase: 'distribution',
+          roundStartTime: Date.now(),
+          usedWords: [...state.gameState.usedWords, action.payload.word].slice(-15),
+          players: state.gameState.players.map(p => ({
+            ...p,
             hasSeenWord: false,
           })),
         },
@@ -360,6 +382,53 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.error('[GameContext] Error saving recent words:', error);
     });
     console.log('[GameContext] New round started successfully');
+  };
+
+  const changeCurrentWord = (): boolean => {
+    console.log('[GameContext] changeCurrentWord called');
+    if (!state.gameState) {
+      console.log('[GameContext] No game state, returning false');
+      return false;
+    }
+
+    const combinedUsedWords = Array.from(new Set([
+      ...recentWords,
+      ...state.gameState.usedWords,
+      state.gameState.currentWord,
+    ]));
+
+    const wordData = getRandomWord(
+      state.settings.selectedCategories,
+      combinedUsedWords
+    );
+
+    if (!wordData) {
+      console.error('[GameContext] No more words available for change');
+      return false;
+    }
+
+    const spyGuessOptions = getSpyGuessOptions(
+      wordData.word,
+      wordData.categoryId,
+      state.settings.spyGuessOptions
+    );
+
+    dispatch({
+      type: 'CHANGE_WORD',
+      payload: {
+        word: wordData.word,
+        categoryId: wordData.categoryId,
+        spyGuessOptions,
+      },
+    });
+
+    const updatedRecentWords = [...recentWords.filter(w => w !== wordData.word), wordData.word].slice(-15);
+    setRecentWords(updatedRecentWords);
+    saveRecentWords(updatedRecentWords).catch(error => {
+      console.error('[GameContext] Error saving recent words:', error);
+    });
+
+    return true;
   };
 
   const markPlayerAsSeenWord = (playerId: string) => {
@@ -722,6 +791,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     roundResults: state.roundResults,
     initializeGame,
     startNewRound,
+    changeCurrentWord,
     markPlayerAsSeenWord,
     submitVote,
     submitSpyGuess,
