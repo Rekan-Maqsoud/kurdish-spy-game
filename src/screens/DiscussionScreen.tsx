@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../types';
-import { GradientBackground, GlassCard, GlassButton, PlayerCard } from '../components';
+import { GradientBackground, GlassCard, GlassButton, PlayerCard, GameMenu } from '../components';
 import Colors from '../constants/colors';
 import Typography from '../constants/typography';
 import { useGame } from '../context/GameContext';
@@ -14,7 +14,7 @@ type DiscussionNavigationProp = NativeStackNavigationProp<RootStackParamList, 'D
 
 const DiscussionScreen: React.FC = () => {
   const navigation = useNavigation<DiscussionNavigationProp>();
-  const { gameState, settings } = useGame();
+  const { gameState, settings, changeCurrentWord, resetGame, addPlayerToGame } = useGame();
   const [timer, setTimer] = useState<number | null>(null);
   const [showCategoryHint, setShowCategoryHint] = useState(true);
 
@@ -57,6 +57,40 @@ const DiscussionScreen: React.FC = () => {
     navigation.navigate('Voting');
   };
 
+  const handleGoHome = () => {
+    Alert.alert('ئاگاداری', 'دڵنیایت دەتەوێت یاریەکە بەدەست بەرەو ماڵ؟', [
+      { text: 'نەخێر', style: 'cancel' },
+      {
+        text: 'بەڵێ',
+        style: 'destructive',
+        onPress: () => {
+          resetGame();
+          navigation.navigate('Home');
+        },
+      },
+    ]);
+  };
+
+  const handleChangeWord = () => {
+    const changed = changeCurrentWord();
+    if (!changed) {
+      Alert.alert('ئاگاداری', 'هیچ وشەیەک نەماوە');
+      return;
+    }
+    navigation.navigate('WordDistribution', { playerIndex: 0 });
+  };
+
+  const handleAddPlayer = (name: string) => {
+    if (!gameState) {
+      return { success: false, message: 'هیچ یارییەک دەستپێنەکراوە' };
+    }
+    const result = addPlayerToGame(name);
+    if (result.success) {
+      navigation.navigate('WordDistribution', { playerIndex: gameState.players.length });
+    }
+    return result;
+  };
+
   return (
     <GradientBackground variant="game">
       <View style={styles.container}>
@@ -75,6 +109,13 @@ const DiscussionScreen: React.FC = () => {
               </View>
             </View>
           )}
+          <View style={styles.headerActions}>
+            <GameMenu
+              onGoHome={handleGoHome}
+              onChangeWord={handleChangeWord}
+              onAddPlayer={handleAddPlayer}
+            />
+          </View>
         </View>
 
         {/* Category Info */}
@@ -165,6 +206,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
     marginTop: 10,
+  },
+  headerActions: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
   },
   roundBadge: {
     backgroundColor: Colors.glass.background,

@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View, Text, Image, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, Image, Dimensions, Modal, TextInput, Alert, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,11 +10,84 @@ import Typography from '../constants/typography';
 import { getTotalCategoryCount, getTotalWordCount } from '../data/words';
 
 const { width } = Dimensions.get('window');
+const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1468349946502582304/42-YE7WGvKDIq6NLHztMF5eSI20WRkukBUZ6KVEpKs7I43iDDnv4un-jc40lHON1PWaA';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const [suggestionOpen, setSuggestionOpen] = useState(false);
+  const [suggestionName, setSuggestionName] = useState('');
+  const [suggestionContact, setSuggestionContact] = useState('');
+  const [suggestionMessage, setSuggestionMessage] = useState('');
+  const [sendingSuggestion, setSendingSuggestion] = useState(false);
+
+  const resetSuggestionForm = () => {
+    setSuggestionName('');
+    setSuggestionContact('');
+    setSuggestionMessage('');
+  };
+
+  const handleSendSuggestion = async () => {
+    const message = suggestionMessage.trim();
+    if (!message) {
+      Alert.alert('ئاگاداری', 'تکایە پێشنیارەکەت بنووسە');
+      return;
+    }
+
+    try {
+      setSendingSuggestion(true);
+      const payload = {
+        username: 'Spy Suggestions',
+        embeds: [
+          {
+            title: 'New Suggestion',
+            color: 0x7c3aed,
+            fields: [
+              {
+                name: 'Name',
+                value: suggestionName.trim() || 'Anonymous',
+                inline: true,
+              },
+              {
+                name: 'Contact',
+                value: suggestionContact.trim() || 'N/A',
+                inline: true,
+              },
+              {
+                name: 'Suggestion',
+                value: message,
+              },
+            ],
+            footer: {
+              text: 'Spy App • Home Suggestions',
+            },
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      };
+
+      const response = await fetch(DISCORD_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Webhook request failed');
+      }
+
+      setSuggestionOpen(false);
+      resetSuggestionForm();
+      Alert.alert('سوپاس', 'پێشنیارەکەت نێردرا');
+    } catch (error) {
+      Alert.alert('هەڵە', 'نەتوانرا پێشنیارەکە بنێردرێت');
+    } finally {
+      setSendingSuggestion(false);
+    }
+  };
 
   return (
     <GradientBackground>
@@ -92,6 +165,16 @@ const HomeScreen: React.FC = () => {
             fullWidth
             style={styles.menuButton}
           />
+
+          <GlassButton
+            title="پێشنیار"
+            icon={<Ionicons name="chatbubble-ellipses" size={22} color="#fff" />}
+            onPress={() => setSuggestionOpen(true)}
+            variant="ghost"
+            size="large"
+            fullWidth
+            style={styles.menuButton}
+          />
         </View>
 
         {/* Footer */}
@@ -103,6 +186,71 @@ const HomeScreen: React.FC = () => {
           <Text style={styles.versionText}>v1.0.0</Text>
         </View>
       </View>
+
+      <Modal
+        visible={suggestionOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSuggestionOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.suggestionOverlay}
+          activeOpacity={1}
+          onPress={() => setSuggestionOpen(false)}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => null}>
+            <GlassCard style={styles.suggestionCard}>
+              <View style={styles.suggestionHeader}>
+                <Text style={styles.suggestionTitle}>پێشنیار</Text>
+                <TouchableOpacity onPress={() => setSuggestionOpen(false)}>
+                  <Ionicons name="close" size={20} color="#fff" />
+                </TouchableOpacity>
+              </View>
+
+              <TextInput
+                style={styles.suggestionInput}
+                placeholder="ناو (ئارەزووی)"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={suggestionName}
+                onChangeText={setSuggestionName}
+                autoCapitalize="words"
+                textAlign="right"
+              />
+              <TextInput
+                style={styles.suggestionInput}
+                placeholder="ژمارە یان ئیمەیڵ (ئارەزووی)"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={suggestionContact}
+                onChangeText={setSuggestionContact}
+                autoCapitalize="none"
+                textAlign="right"
+              />
+              <TextInput
+                style={[styles.suggestionInput, styles.suggestionMessage]}
+                placeholder="پێشنیارەکەت بنووسە"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={suggestionMessage}
+                onChangeText={setSuggestionMessage}
+                textAlign="right"
+                multiline
+              />
+
+              <View style={styles.suggestionActions}>
+                <GlassButton
+                  title={sendingSuggestion ? 'ناردن...' : 'ناردن'}
+                  icon={<Ionicons name="send" size={18} color="#fff" />}
+                  onPress={handleSendSuggestion}
+                  variant="primary"
+                  size="medium"
+                  fullWidth
+                  loading={sendingSuggestion}
+                  disabled={sendingSuggestion}
+                />
+              </View>
+            </GlassCard>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </GradientBackground>
   );
 };
@@ -182,6 +330,42 @@ const styles = StyleSheet.create({
   },
   menuButton: {
     marginVertical: 6,
+  },
+  suggestionOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  suggestionCard: {
+    padding: 16,
+  },
+  suggestionHeader: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  suggestionTitle: {
+    ...Typography.h3,
+  },
+  suggestionInput: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#fff',
+    marginBottom: 10,
+    writingDirection: 'rtl',
+  },
+  suggestionMessage: {
+    minHeight: 110,
+    textAlignVertical: 'top',
+  },
+  suggestionActions: {
+    marginTop: 6,
   },
   footer: {
     alignItems: 'center',

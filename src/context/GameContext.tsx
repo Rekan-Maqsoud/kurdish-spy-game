@@ -12,6 +12,7 @@ interface GameContextType {
   initializeGame: (players: Player[]) => void;
   startNewRound: () => void;
   changeCurrentWord: () => boolean;
+  addPlayerToGame: (playerName: string) => { success: boolean; message?: string; playerId?: string };
   markPlayerAsSeenWord: (playerId: string) => void;
   submitVote: (voterId: string, suspectId: string) => void;
   submitSpyGuess: (word: string) => boolean;
@@ -39,6 +40,7 @@ type GameAction =
     } }
   | { type: 'START_ROUND'; payload: { word: string; categoryId: CategoryId; spyIds: string[]; spyGuessOptions: string[] } }
   | { type: 'CHANGE_WORD'; payload: { word: string; categoryId: CategoryId; spyGuessOptions: string[] } }
+  | { type: 'ADD_PLAYER'; payload: Player }
   | { type: 'MARK_SEEN_WORD'; payload: string }
   | { type: 'SUBMIT_VOTE'; payload: { voterId: string; suspectId: string } }
   | { type: 'SET_PHASE'; payload: GamePhase }
@@ -167,6 +169,16 @@ function gameReducer(state: State, action: GameAction): State {
             ...p,
             hasSeenWord: false,
           })),
+        },
+      };
+
+    case 'ADD_PLAYER':
+      if (!state.gameState) return state;
+      return {
+        ...state,
+        gameState: {
+          ...state.gameState,
+          players: [...state.gameState.players, action.payload],
         },
       };
 
@@ -429,6 +441,41 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     return true;
+  };
+
+  const addPlayerToGame = (playerName: string): { success: boolean; message?: string; playerId?: string } => {
+    if (!state.gameState) {
+      return { success: false, message: 'هیچ یارییەک دەستپێنەکراوە' };
+    }
+
+    const trimmed = playerName.trim();
+    if (!trimmed) {
+      return { success: false, message: 'تکایە ناوی یاریزان بنووسە' };
+    }
+
+    if (state.gameState.players.length >= 10) {
+      return { success: false, message: 'زۆرترین ژمارەی یاریزان ١٠ کەسە' };
+    }
+
+    const exists = state.gameState.players.some(
+      p => p.name.trim().toLowerCase() === trimmed.toLowerCase()
+    );
+    if (exists) {
+      return { success: false, message: 'ئەم ناوە پێشتر هەیە' };
+    }
+
+    const newPlayer: Player = {
+      id: uuidv4(),
+      name: trimmed,
+      score: 0,
+      isSpy: false,
+      hasVoted: false,
+      votedFor: null,
+      hasSeenWord: false,
+    };
+
+    dispatch({ type: 'ADD_PLAYER', payload: newPlayer });
+    return { success: true, playerId: newPlayer.id };
   };
 
   const markPlayerAsSeenWord = (playerId: string) => {
@@ -801,6 +848,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     initializeGame,
     startNewRound,
     changeCurrentWord,
+    addPlayerToGame,
     markPlayerAsSeenWord,
     submitVote,
     submitSpyGuess,

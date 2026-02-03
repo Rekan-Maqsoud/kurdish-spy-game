@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, Dimensions } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../types';
-import { GradientBackground, GlassCard, GlassButton, SimpleWordDisplay } from '../components';
+import { GradientBackground, GlassCard, GlassButton, SimpleWordDisplay, GameMenu } from '../components';
 import Colors from '../constants/colors';
 import Typography from '../constants/typography';
 import { useGame } from '../context/GameContext';
@@ -20,7 +20,7 @@ const WordDistributionScreen: React.FC = () => {
   const route = useRoute<WordDistributionRouteProp>();
   const { playerIndex } = route.params;
   
-  const { gameState, markPlayerAsSeenWord, changeCurrentWord, resetGame } = useGame();
+  const { gameState, markPlayerAsSeenWord, changeCurrentWord, resetGame, addPlayerToGame } = useGame();
   const [showWord, setShowWord] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -122,6 +122,15 @@ const WordDistributionScreen: React.FC = () => {
     }, 2500);
   };
 
+  const handleAddPlayer = (name: string) => {
+    const result = addPlayerToGame(name);
+    if (result.success) {
+      showToast('یاریزانی نوێ زیاد کرا');
+      navigation.navigate('WordDistribution', { playerIndex: gameState.players.length });
+    }
+    return result;
+  };
+
   return (
     <GradientBackground variant={isSpy && showWord ? 'spy' : 'game'}>
       <View style={styles.container}>
@@ -138,20 +147,11 @@ const WordDistributionScreen: React.FC = () => {
             </Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity
-              onPress={handleChangeWord}
-              style={styles.actionButton}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="shuffle" size={20} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleHomePress}
-              style={styles.actionButton}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="home" size={20} color="#fff" />
-            </TouchableOpacity>
+            <GameMenu
+              onGoHome={handleHomePress}
+              onChangeWord={handleChangeWord}
+              onAddPlayer={handleAddPlayer}
+            />
           </View>
         </View>
 
@@ -237,16 +237,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     gap: 10,
     alignItems: 'center',
-  },
-  actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.glass.background,
-    borderWidth: 1,
-    borderColor: Colors.glass.border,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   roundBadge: {
     backgroundColor: Colors.glass.background,

@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, View, Text, ScrollView, Image, Animated, Easing } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image, Animated, Easing, Alert } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../types';
-import { GradientBackground, GlassCard, GlassButton, PlayerCard } from '../components';
+import { GradientBackground, GlassCard, GlassButton, PlayerCard, GameMenu } from '../components';
 import Colors from '../constants/colors';
 import Typography from '../constants/typography';
 import { useGame } from '../context/GameContext';
@@ -19,7 +19,7 @@ const RoundResultScreen: React.FC = () => {
   const route = useRoute<RoundResultRouteProp>();
   const { result } = route.params;
   
-  const { gameState, proceedToNextPhase, startNewRound } = useGame();
+  const { gameState, proceedToNextPhase, startNewRound, changeCurrentWord, resetGame, addPlayerToGame } = useGame();
   const [shouldNavigateHome, setShouldNavigateHome] = useState(false);
 
   // Animation values
@@ -138,6 +138,40 @@ const RoundResultScreen: React.FC = () => {
     }
   };
 
+  const handleGoHome = () => {
+    Alert.alert('ئاگاداری', 'دڵنیایت دەتەوێت یاریەکە بەدەست بەرەو ماڵ؟', [
+      { text: 'نەخێر', style: 'cancel' },
+      {
+        text: 'بەڵێ',
+        style: 'destructive',
+        onPress: () => {
+          resetGame();
+          navigation.navigate('Home');
+        },
+      },
+    ]);
+  };
+
+  const handleChangeWord = () => {
+    const changed = changeCurrentWord();
+    if (!changed) {
+      Alert.alert('ئاگاداری', 'هیچ وشەیەک نەماوە');
+      return;
+    }
+    navigation.navigate('WordDistribution', { playerIndex: 0 });
+  };
+
+  const handleAddPlayer = (name: string) => {
+    if (!gameState) {
+      return { success: false, message: 'هیچ یارییەک دەستپێنەکراوە' };
+    }
+    const result = addPlayerToGame(name);
+    if (result.success) {
+      navigation.navigate('WordDistribution', { playerIndex: gameState.players.length });
+    }
+    return result;
+  };
+
   const bounceInterpolation = bounceAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 1.05],
@@ -157,6 +191,13 @@ const RoundResultScreen: React.FC = () => {
           ]}
         >
           <Text style={styles.title}>ئەنجامی گەڕی {result.round}</Text>
+          <View style={styles.headerActions}>
+            <GameMenu
+              onGoHome={handleGoHome}
+              onChangeWord={handleChangeWord}
+              onAddPlayer={handleAddPlayer}
+            />
+          </View>
         </Animated.View>
 
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -382,9 +423,15 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   header: {
+    flexDirection: 'row-reverse',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 20,
     marginTop: 10,
+  },
+  headerActions: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
   },
   title: {
     ...Typography.h2,

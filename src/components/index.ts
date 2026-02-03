@@ -6,3 +6,4 @@ export { default as PlayerCard } from './PlayerCard';
 export { default as WordCard } from './WordCard';
 export { default as SimpleWordDisplay } from './SimpleWordDisplay';
 export { default as GradientBackground } from './GradientBackground';
+export { default as GameMenu } from './GameMenu';
