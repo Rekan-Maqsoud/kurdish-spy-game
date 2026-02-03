@@ -97,7 +97,9 @@ const GameMenu: React.FC<GameMenuProps> = ({
                   icon={<Ionicons name="home" size={20} color="#fff" />}
                   onPress={() => {
                     closeMenu();
-                    onGoHome();
+                    setTimeout(() => {
+                      onGoHome();
+                    }, 0);
                   }}
                   variant="ghost"
                   size="medium"

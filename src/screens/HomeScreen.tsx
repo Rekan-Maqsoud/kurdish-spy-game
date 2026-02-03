@@ -91,7 +91,11 @@ const HomeScreen: React.FC = () => {
 
   return (
     <GradientBackground>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Logo and Title */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
@@ -213,6 +217,8 @@ const HomeScreen: React.FC = () => {
                 placeholder="ناو (ئارەزووی)"
                 autoCapitalize="words"
                 style={styles.suggestionInput}
+                containerStyle={styles.suggestionInputContainer}
+                placeholderTextColor="rgba(255, 255, 255, 0.9)"
                 textAlign="right"
               />
               <GlassInput
@@ -221,6 +227,8 @@ const HomeScreen: React.FC = () => {
                 placeholder="ژمارە یان ئیمەیڵ (ئارەزووی)"
                 autoCapitalize="none"
                 style={styles.suggestionInput}
+                containerStyle={styles.suggestionInputContainer}
+                placeholderTextColor="rgba(255, 255, 255, 0.9)"
                 textAlign="right"
               />
               <GlassInput
@@ -229,6 +237,11 @@ const HomeScreen: React.FC = () => {
                 placeholder="پێشنیارەکەت بنووسە"
                 autoCapitalize="sentences"
                 style={[styles.suggestionInput, styles.suggestionMessage]}
+                containerStyle={styles.suggestionInputContainer}
+                inputStyle={styles.suggestionMessageInput}
+                placeholderTextColor="rgba(255, 255, 255, 0.9)"
+                multiline
+                numberOfLines={5}
                 textAlign="right"
               />
 
@@ -253,10 +266,13 @@ const HomeScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     flexGrow: 1,
     padding: 16,
-    justifyContent: 'space-between',
+    paddingBottom: 32,
   },
   header: {
     alignItems: 'center',
@@ -349,8 +365,16 @@ const styles = StyleSheet.create({
   suggestionInput: {
     marginBottom: 10,
   },
+  suggestionInputContainer: {
+    backgroundColor: 'rgba(20, 20, 32, 0.85)',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
   suggestionMessage: {
     minHeight: 110,
+  },
+  suggestionMessageInput: {
+    minHeight: 110,
+    textAlignVertical: 'top',
   },
   suggestionActions: {
     marginTop: 6,

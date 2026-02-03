@@ -6,6 +6,7 @@ import {
   Text,
   ViewStyle,
   StyleProp,
+  TextStyle,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import Colors from '../constants/colors';
@@ -16,6 +17,8 @@ interface GlassInputProps {
   onChangeText: (text: string) => void;
   placeholder?: string;
   style?: StyleProp<ViewStyle>;
+  containerStyle?: StyleProp<ViewStyle>;
+  inputStyle?: StyleProp<TextStyle>;
   label?: string;
   keyboardType?: 'default' | 'numeric' | 'email-address';
   maxLength?: number;
@@ -23,6 +26,9 @@ interface GlassInputProps {
   textAlign?: 'left' | 'center' | 'right';
   onFocus?: () => void;
   onBlur?: () => void;
+  placeholderTextColor?: string;
+  multiline?: boolean;
+  numberOfLines?: number;
 }
 
 const GlassInput: React.FC<GlassInputProps> = ({
@@ -30,6 +36,8 @@ const GlassInput: React.FC<GlassInputProps> = ({
   onChangeText,
   placeholder,
   style,
+  containerStyle,
+  inputStyle,
   label,
   keyboardType = 'default',
   maxLength,
@@ -37,22 +45,27 @@ const GlassInput: React.FC<GlassInputProps> = ({
   textAlign = 'right', // RTL for Kurdish
   onFocus,
   onBlur,
+  placeholderTextColor = 'rgba(255, 255, 255, 0.7)',
+  multiline = false,
+  numberOfLines,
 }) => {
   return (
     <View style={[styles.wrapper, style]}>
       {label && <Text style={styles.label}>{label}</Text>}
-      <View style={styles.container}>
+      <View style={[styles.container, containerStyle]}>
         <TextInput
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor="rgba(255, 255, 255, 0.7)"
-          style={[styles.input, { textAlign }]}
+          placeholderTextColor={placeholderTextColor}
+          style={[styles.input, { textAlign }, inputStyle]}
           keyboardType={keyboardType}
           maxLength={maxLength}
           autoCapitalize={autoCapitalize}
           onFocus={onFocus}
           onBlur={onBlur}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
         />
       </View>
     </View>
