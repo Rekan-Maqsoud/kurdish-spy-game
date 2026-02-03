@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, Dimensions, Alert } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,9 +24,7 @@ const WordDistributionScreen: React.FC = () => {
   const [showWord, setShowWord] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const [pendingHomeConfirm, setPendingHomeConfirm] = useState(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const homeConfirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!gameState) {
@@ -39,9 +37,6 @@ const WordDistributionScreen: React.FC = () => {
     return () => {
       if (toastTimerRef.current) {
         clearTimeout(toastTimerRef.current);
-      }
-      if (homeConfirmTimerRef.current) {
-        clearTimeout(homeConfirmTimerRef.current);
       }
     };
   }, []);
@@ -101,25 +96,22 @@ const WordDistributionScreen: React.FC = () => {
   };
 
   const handleHomePress = () => {
-    if (pendingHomeConfirm) {
-      setPendingHomeConfirm(false);
-      if (homeConfirmTimerRef.current) {
-        clearTimeout(homeConfirmTimerRef.current);
-      }
-      resetGame();
-      navigation.navigate('Home');
-      showToast('گەڕایتەوە بۆ ماڵ');
-      return;
-    }
-
-    setPendingHomeConfirm(true);
-    showToast('دووبارە کلیک بکە بۆ گەڕانەوە بۆ ماڵ');
-    if (homeConfirmTimerRef.current) {
-      clearTimeout(homeConfirmTimerRef.current);
-    }
-    homeConfirmTimerRef.current = setTimeout(() => {
-      setPendingHomeConfirm(false);
-    }, 2500);
+    Alert.alert(
+      'گەڕانەوە بۆ ماڵ',
+      'دڵنیایت دەتەوێت بگەڕیتەوە بۆ ماڵ؟ یاریەکە دەستپێ دەکاتەوە.',
+      [
+        { text: 'نەخێر', style: 'cancel' },
+        {
+          text: 'بەڵێ',
+          style: 'destructive',
+          onPress: () => {
+            resetGame();
+            navigation.navigate('Home');
+            showToast('گەڕایتەوە بۆ ماڵ');
+          },
+        },
+      ]
+    );
   };
 
   const handleAddPlayer = (name: string) => {

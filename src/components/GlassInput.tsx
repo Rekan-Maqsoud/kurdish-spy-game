@@ -46,7 +46,7 @@ const GlassInput: React.FC<GlassInputProps> = ({
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor="rgba(255, 255, 255, 0.5)"
+          placeholderTextColor="rgba(255, 255, 255, 0.7)"
           style={[styles.input, { textAlign }]}
           keyboardType={keyboardType}
           maxLength={maxLength}
@@ -71,8 +71,13 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: Colors.glass.border,
+    backgroundColor: Colors.glass.backgroundLight,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   input: {
     fontSize: 18,

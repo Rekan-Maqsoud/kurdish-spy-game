@@ -32,11 +32,11 @@ export const Colors = {
   
   // Glass effect colors
   glass: {
-    background: 'rgba(255, 255, 255, 0.1)',
-    backgroundLight: 'rgba(255, 255, 255, 0.15)',
-    backgroundDark: 'rgba(0, 0, 0, 0.2)',
-    border: 'rgba(255, 255, 255, 0.2)',
-    borderLight: 'rgba(255, 255, 255, 0.3)',
+    background: 'rgba(255, 255, 255, 0.22)',
+    backgroundLight: 'rgba(255, 255, 255, 0.3)',
+    backgroundDark: 'rgba(0, 0, 0, 0.35)',
+    border: 'rgba(255, 255, 255, 0.35)',
+    borderLight: 'rgba(255, 255, 255, 0.45)',
   },
   
   // Text colors

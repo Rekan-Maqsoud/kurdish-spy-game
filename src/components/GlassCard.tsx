@@ -20,11 +20,11 @@ const GlassCard: React.FC<GlassCardProps> = ({
   const getBackgroundColor = () => {
     switch (variant) {
       case 'light':
-        return 'rgba(255, 255, 255, 0.15)';
+        return Colors.glass.backgroundLight;
       case 'dark':
-        return 'rgba(0, 0, 0, 0.3)';
+        return Colors.glass.backgroundDark;
       default:
-        return 'rgba(255, 255, 255, 0.1)';
+        return Colors.glass.background;
     }
   };
 
@@ -49,7 +49,12 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: Colors.glass.border,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
   noPadding: {
     padding: 0,

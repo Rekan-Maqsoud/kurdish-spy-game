@@ -76,6 +76,7 @@ const SettingsScreen: React.FC = () => {
     onDecrease,
     min,
     max,
+    compact = false,
   }: {
     label: string;
     value: number;
@@ -83,9 +84,10 @@ const SettingsScreen: React.FC = () => {
     onDecrease: () => void;
     min: number;
     max: number;
+    compact?: boolean;
   }) => (
-    <View style={styles.selectorRow}>
-      <Text style={styles.selectorLabel}>{label}</Text>
+    <View style={[styles.selectorRow, compact && styles.selectorTile]}>
+      <Text style={[styles.selectorLabel, compact && styles.selectorLabelCompact]}>{label}</Text>
       <View style={styles.selectorControls}>
         <TouchableOpacity
           onPress={onDecrease}
@@ -110,13 +112,15 @@ const SettingsScreen: React.FC = () => {
     label,
     value,
     onToggle,
+    compact = false,
   }: {
     label: string;
     value: boolean;
     onToggle: () => void;
+    compact?: boolean;
   }) => (
-    <View style={styles.toggleRow}>
-      <Text style={styles.toggleLabel}>{label}</Text>
+    <View style={[styles.toggleRow, compact && styles.toggleTile]}>
+      <Text style={[styles.toggleLabel, compact && styles.toggleLabelCompact]}>{label}</Text>
       <TouchableOpacity
         onPress={onToggle}
         style={[styles.togglePill, value ? styles.toggleOn : styles.toggleOff]}
@@ -152,17 +156,6 @@ const SettingsScreen: React.FC = () => {
           {/* Game Settings */}
           <Text style={styles.sectionTitle}>ڕێکخستنەکانی یاری</Text>
           <GlassCard style={styles.settingsCard}>
-            <NumberSelector
-              label="ژمارەی گەڕەکان"
-              value={numberOfRounds}
-              onIncrease={() => setNumberOfRounds(n => n + 1)}
-              onDecrease={() => setNumberOfRounds(n => n - 1)}
-              min={1}
-              max={20}
-            />
-            
-            <View style={styles.divider} />
-
             <View style={styles.timeRow}>
               <Text style={styles.selectorLabel}>کاتی گفتوگۆ</Text>
               <View style={styles.timeControls}>
@@ -199,83 +192,107 @@ const SettingsScreen: React.FC = () => {
             </View>
 
             <View style={styles.divider} />
-            
-            <NumberSelector
-              label="ژمارەی هەڵبژاردنەکانی سیخوڕ"
-              value={spyGuessOptions}
-              onIncrease={() => setSpyGuessOptions(n => n + 1)}
-              onDecrease={() => setSpyGuessOptions(n => n - 1)}
-              min={2}
-              max={8}
-            />
 
-            <View style={styles.divider} />
+            <View style={styles.settingsGrid}>
+              <View style={styles.settingTile}>
+                <NumberSelector
+                  label="ژمارەی گەڕەکان"
+                  value={numberOfRounds}
+                  onIncrease={() => setNumberOfRounds(n => n + 1)}
+                  onDecrease={() => setNumberOfRounds(n => n - 1)}
+                  min={1}
+                  max={20}
+                  compact
+                />
+              </View>
 
-            <NumberSelector
-              label="ژمارەی سیخوڕەکان"
-              value={numberOfSpies}
-              onIncrease={() => setNumberOfSpies(n => n + 1)}
-              onDecrease={() => setNumberOfSpies(n => n - 1)}
-              min={1}
-              max={5}
-            />
-            
-            <View style={styles.divider} />
+              <View style={styles.settingTile}>
+                <NumberSelector
+                  label="ژمارەی سیخوڕەکان"
+                  value={numberOfSpies}
+                  onIncrease={() => setNumberOfSpies(n => n + 1)}
+                  onDecrease={() => setNumberOfSpies(n => n - 1)}
+                  min={1}
+                  max={5}
+                  compact
+                />
+              </View>
 
-            <ToggleRow
-              label="پیشاندانی پۆل"
-              value={showCategoryHint}
-              onToggle={() => setShowCategoryHint(v => !v)}
-            />
+              <View style={styles.settingTile}>
+                <NumberSelector
+                  label="هەڵبژاردنەکانی سیخوڕ"
+                  value={spyGuessOptions}
+                  onIncrease={() => setSpyGuessOptions(n => n + 1)}
+                  onDecrease={() => setSpyGuessOptions(n => n - 1)}
+                  min={2}
+                  max={8}
+                  compact
+                />
+              </View>
 
-            <View style={styles.divider} />
+              <View style={styles.settingTile}>
+                <ToggleRow
+                  label="پیشاندانی پۆل"
+                  value={showCategoryHint}
+                  onToggle={() => setShowCategoryHint(v => !v)}
+                  compact
+                />
+              </View>
 
-            <ToggleRow
-              label="دەنگدان چالاک"
-              value={enableVoting}
-              onToggle={() => setEnableVoting(v => !v)}
-            />
+              <View style={styles.settingTile}>
+                <ToggleRow
+                  label="دەنگدان"
+                  value={enableVoting}
+                  onToggle={() => setEnableVoting(v => !v)}
+                  compact
+                />
+              </View>
 
-            <View style={styles.divider} />
+              <View style={styles.settingTile}>
+                <ToggleRow
+                  label="تەخمینی سیخوڕ"
+                  value={enableSpyGuess}
+                  onToggle={() => setEnableSpyGuess(v => !v)}
+                  compact
+                />
+              </View>
 
-            <ToggleRow
-              label="تەخمینی سیخوڕ چالاک"
-              value={enableSpyGuess}
-              onToggle={() => setEnableSpyGuess(v => !v)}
-            />
+              <View style={styles.settingTile}>
+                <NumberSelector
+                  label="خاڵ دۆزینەوەی سیخوڕ"
+                  value={pointsForFindingSpy}
+                  onIncrease={() => setPointsForFindingSpy(n => n + 1)}
+                  onDecrease={() => setPointsForFindingSpy(n => n - 1)}
+                  min={1}
+                  max={5}
+                  compact
+                />
+              </View>
 
-            <View style={styles.divider} />
-            
-            <NumberSelector
-              label="خاڵ بۆ دۆزینەوەی سیخوڕ"
-              value={pointsForFindingSpy}
-              onIncrease={() => setPointsForFindingSpy(n => n + 1)}
-              onDecrease={() => setPointsForFindingSpy(n => n - 1)}
-              min={1}
-              max={5}
-            />
-            
-            <View style={styles.divider} />
-            
-            <NumberSelector
-              label="خاڵ بۆ تەخمینی سیخوڕ"
-              value={pointsForSpyGuessing}
-              onIncrease={() => setPointsForSpyGuessing(n => n + 1)}
-              onDecrease={() => setPointsForSpyGuessing(n => n - 1)}
-              min={1}
-              max={5}
-            />
-            
-            <View style={styles.divider} />
-            
-            <NumberSelector
-              label="خاڵ بۆ دەربازبوونی سیخوڕ"
-              value={pointsForSpyEscape}
-              onIncrease={() => setPointsForSpyEscape(n => n + 1)}
-              onDecrease={() => setPointsForSpyEscape(n => n - 1)}
-              min={1}
-              max={5}
-            />
+              <View style={styles.settingTile}>
+                <NumberSelector
+                  label="خاڵ تەخمینی سیخوڕ"
+                  value={pointsForSpyGuessing}
+                  onIncrease={() => setPointsForSpyGuessing(n => n + 1)}
+                  onDecrease={() => setPointsForSpyGuessing(n => n - 1)}
+                  min={1}
+                  max={5}
+                  compact
+                />
+              </View>
+
+              <View style={styles.settingTile}>
+                <NumberSelector
+                  label="خاڵ دەربازبوون"
+                  value={pointsForSpyEscape}
+                  onIncrease={() => setPointsForSpyEscape(n => n + 1)}
+                  onDecrease={() => setPointsForSpyEscape(n => n - 1)}
+                  min={1}
+                  max={5}
+                  compact
+                />
+              </View>
+            </View>
           </GlassCard>
 
           {/* Categories */}
@@ -363,6 +380,16 @@ const styles = StyleSheet.create({
   },
   settingsCard: {
     marginBottom: 16,
+    paddingVertical: 10,
+  },
+  settingsGrid: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  settingTile: {
+    width: '48%',
     paddingVertical: 6,
   },
   selectorRow: {
@@ -371,12 +398,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 6,
   },
+  selectorTile: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 6,
+    paddingVertical: 0,
+  },
   selectorLabel: {
     ...Typography.body,
     flex: 1,
     textAlign: 'right',
     writingDirection: 'rtl',
     fontSize: 14,
+  },
+  selectorLabelCompact: {
+    fontSize: 13,
+    opacity: 0.9,
   },
   selectorControls: {
     flexDirection: 'row-reverse',
@@ -423,6 +460,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginTop: 6,
+    marginBottom: 6,
   },
   quickChip: {
     paddingHorizontal: 10,
@@ -454,6 +492,16 @@ const styles = StyleSheet.create({
     ...Typography.body,
     fontSize: 14,
     textAlign: 'right',
+  },
+  toggleTile: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 6,
+    paddingVertical: 0,
+  },
+  toggleLabelCompact: {
+    fontSize: 13,
+    opacity: 0.9,
   },
   togglePill: {
     width: 52,
@@ -500,7 +548,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   categoryChip: {
-    width: '47%',
+    width: '31%',
   },
   selectedCount: {
     ...Typography.body,

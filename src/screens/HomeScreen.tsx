@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, Image, Dimensions, Modal, Alert, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, Image, Dimensions, Modal, Alert, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -91,7 +91,7 @@ const HomeScreen: React.FC = () => {
 
   return (
     <GradientBackground>
-      <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Logo and Title */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
@@ -185,7 +185,7 @@ const HomeScreen: React.FC = () => {
           </View>
           <Text style={styles.versionText}>v1.0.0</Text>
         </View>
-      </View>
+      </ScrollView>
 
       <Modal
         visible={suggestionOpen}
@@ -254,7 +254,7 @@ const HomeScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     padding: 16,
     justifyContent: 'space-between',
   },
